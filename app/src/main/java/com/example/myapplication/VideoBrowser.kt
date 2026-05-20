@@ -20,16 +20,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DownhillSkiing
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,16 +74,21 @@ sealed class UploadState {
     data class Error(val message: String) : UploadState()
 }
 
+private fun listLocalVideos(context: android.content.Context): List<File> =
+    context.filesDir
+        .listFiles { f -> f.isFile && f.name.endsWith(".mp4") }
+        ?.sortedByDescending { it.lastModified() }
+        ?: emptyList()
+
 @Composable
-fun VideoBrowser(modifier: Modifier = Modifier) {
+fun VideoBrowser(
+    modifier: Modifier = Modifier,
+    onAnalysisSucceeded: (File, AnalysisResult) -> Unit = { _, _ -> }
+) {
     val context = LocalContext.current
-    val files = remember {
-        context.filesDir
-            .listFiles { f -> f.isFile && f.name.endsWith(".mp4") }
-            ?.sortedByDescending { it.lastModified() }
-            ?: emptyList()
-    }
+    var files by remember { mutableStateOf(listLocalVideos(context)) }
     var selectedFile by remember { mutableStateOf<File?>(null) }
+    var fileToDelete by remember { mutableStateOf<File?>(null) }
     var uploadState by remember { mutableStateOf<UploadState>(UploadState.Idle) }
     val scope = rememberCoroutineScope()
     val player = remember { ExoPlayer.Builder(context).build() }
@@ -135,6 +144,7 @@ fun VideoBrowser(modifier: Modifier = Modifier) {
                             val result = withContext(Dispatchers.IO) {
                                 uploadVideoForAnalysis(current)
                             }
+                            onAnalysisSucceeded(current, result)
                             UploadState.Success(result)
                         } catch (t: Throwable) {
                             UploadState.Error(t.message ?: t.javaClass.simpleName)
@@ -162,11 +172,38 @@ fun VideoBrowser(modifier: Modifier = Modifier) {
                 items(files) { file ->
                     VideoCard(
                         file = file,
-                        onPlay = { selectedFile = file }
+                        onPlay = { selectedFile = file },
+                        onDelete = { fileToDelete = file }
                     )
                 }
             }
         }
+    }
+
+    val target = fileToDelete
+    if (target != null) {
+        AlertDialog(
+            onDismissRequest = { fileToDelete = null },
+            title = { Text(text = "Delete this video?") },
+            text = {
+                Text(text = "\"${target.nameWithoutExtension.formatVideoTitle()}\" will be removed from this device. This can't be undone.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val deleted = target.delete()
+                    if (deleted && selectedFile == target) selectedFile = null
+                    files = listLocalVideos(context)
+                    fileToDelete = null
+                }) {
+                    Text(text = "Delete", color = IssueRed, fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { fileToDelete = null }) {
+                    Text(text = "Cancel", color = TextSecondary)
+                }
+            }
+        )
     }
 }
 
@@ -223,7 +260,7 @@ private fun SelectedVideoPanel(
 }
 
 @Composable
-private fun VideoCard(file: File, onPlay: () -> Unit) {
+private fun VideoCard(file: File, onPlay: () -> Unit, onDelete: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -304,6 +341,15 @@ private fun VideoCard(file: File, onPlay: () -> Unit) {
                 )
             }
         }
+        IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {
+            Icon(
+                Icons.Filled.Delete,
+                contentDescription = "Delete video",
+                tint = IssueRed,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+        Spacer(Modifier.size(4.dp))
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -327,6 +373,7 @@ private fun String.formatVideoTitle(): String {
     return raw.toLongOrNull()?.let { "Recording ${raw.takeLast(5)}" } ?: raw
 }
 
+@Composable
 private fun relativeAge(epochMs: Long): String {
     val diff = System.currentTimeMillis() - epochMs
     if (diff < 0) return "just now"
@@ -334,7 +381,7 @@ private fun relativeAge(epochMs: Long): String {
     val hours = TimeUnit.MILLISECONDS.toHours(diff)
     val minutes = TimeUnit.MILLISECONDS.toMinutes(diff)
     return when {
-        days >= 7 -> "${days / 7} week${if (days / 7 > 1) "s" else ""} ago"
+        days >= 7 -> pluralStringResource(R.plurals.week_ago, (days / 7).toInt(), (days / 7).toInt())
         days >= 1 -> "$days day${if (days > 1) "s" else ""} ago"
         hours >= 1 -> "$hours hour${if (hours > 1) "s" else ""} ago"
         minutes >= 1 -> "$minutes min ago"

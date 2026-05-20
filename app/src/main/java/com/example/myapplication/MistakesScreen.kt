@@ -17,12 +17,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.automirrored.filled.RotateRight
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.RemoveRedEye
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +37,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.ui.theme.CardSurface
+import com.example.myapplication.ui.theme.IssueRed
+import com.example.myapplication.ui.theme.PrimaryBlue
 import com.example.myapplication.ui.theme.SeverityHighBg
 import com.example.myapplication.ui.theme.SeverityHighFg
 import com.example.myapplication.ui.theme.SeverityLowBg
@@ -40,76 +47,51 @@ import com.example.myapplication.ui.theme.SeverityMedBg
 import com.example.myapplication.ui.theme.SeverityMedFg
 import com.example.myapplication.ui.theme.TagBg
 import com.example.myapplication.ui.theme.TagFg
+import com.example.myapplication.ui.theme.TextMuted
 import com.example.myapplication.ui.theme.TextPrimary
 import com.example.myapplication.ui.theme.TextSecondary
 import com.example.myapplication.ui.theme.UploadTint
 
-private enum class Severity(val label: String, val bg: Color, val fg: Color) {
-    HIGH("high", SeverityHighBg, SeverityHighFg),
-    MEDIUM("medium", SeverityMedBg, SeverityMedFg),
-    LOW("low", SeverityLowBg, SeverityLowFg)
+private data class SeverityStyle(val label: String, val bg: Color, val fg: Color)
+
+private fun severityStyle(code: String): SeverityStyle = when (code.lowercase()) {
+    "high"   -> SeverityStyle("high",   SeverityHighBg, SeverityHighFg)
+    "medium" -> SeverityStyle("medium", SeverityMedBg,  SeverityMedFg)
+    else     -> SeverityStyle("low",    SeverityLowBg,  SeverityLowFg)
 }
 
-private data class Mistake(
-    val icon: ImageVector,
-    val iconTint: Color,
-    val title: String,
-    val description: String,
-    val severity: Severity,
-    val sport: String,
-    val users: String
-)
+private fun sportLabel(code: String): String = when (code.lowercase()) {
+    "skiing"       -> "Skiing"
+    "snowboarding" -> "Snowboarding"
+    "both"         -> "Both"
+    else           -> code.replaceFirstChar { it.uppercase() }
+}
 
-private val mistakes = listOf(
-    Mistake(
-        Icons.Filled.Warning,
-        Color(0xFFF59E0B),
-        "Leaning Back",
-        "Weight distribution too far back, reducing control",
-        Severity.HIGH,
-        "Skiing",
-        "78% of users"
-    ),
-    Mistake(
-        Icons.Filled.SwapHoriz,
-        Color(0xFF6B7280),
-        "Arms Too Wide",
-        "Poor balance and reduced turning efficiency",
-        Severity.MEDIUM,
-        "Snowboarding",
-        "62% of users"
-    ),
-    Mistake(
-        Icons.Filled.RemoveRedEye,
-        Color(0xFF334155),
-        "Looking Down",
-        "Eyes focused on skis instead of ahead",
-        Severity.HIGH,
-        "Both",
-        "85% of users"
-    ),
-    Mistake(
-        Icons.AutoMirrored.Filled.DirectionsRun,
-        Color(0xFFF59E0B),
-        "Stiff Knees",
-        "Not absorbing terrain properly",
-        Severity.MEDIUM,
-        "Skiing",
-        "54% of users"
-    ),
-    Mistake(
-        Icons.AutoMirrored.Filled.RotateRight,
-        Color(0xFF6B7280),
-        "Hip Rotation Issues",
-        "Hips not aligning properly during turns",
-        Severity.LOW,
-        "Both",
-        "41% of users"
-    )
-)
+private fun iconFor(code: String?): ImageVector = when (code) {
+    "warning"        -> Icons.Filled.Warning
+    "swap_horiz"     -> Icons.Filled.SwapHoriz
+    "eye"            -> Icons.Filled.RemoveRedEye
+    "directions_run" -> Icons.AutoMirrored.Filled.DirectionsRun
+    "rotate_right"   -> Icons.AutoMirrored.Filled.RotateRight
+    else             -> Icons.Filled.ErrorOutline
+}
+
+private fun parseTintHex(hex: String?): Color {
+    if (hex.isNullOrBlank()) return Color(0xFF6B7280)
+    val clean = hex.removePrefix("#")
+    val value = clean.toLongOrNull(16) ?: return Color(0xFF6B7280)
+    return Color(0xFF000000 or value)
+}
 
 @Composable
-fun MistakesScreen(modifier: Modifier = Modifier) {
+fun MistakesScreen(
+    viewModel: MistakesViewModel,
+    modifier: Modifier = Modifier
+) {
+    val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(Unit) { viewModel.refresh() }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -117,30 +99,67 @@ fun MistakesScreen(modifier: Modifier = Modifier) {
             .padding(top = 12.dp)
     ) {
         Text(
-            text = "Common Mistakes",
+            text = "Your Mistakes",
             color = TextPrimary,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
         Spacer(Modifier.size(2.dp))
         Text(
-            text = "Learn from common technique errors",
+            text = "Technique errors detected in your videos",
             color = TextSecondary,
             fontSize = 13.sp
         )
         Spacer(Modifier.size(14.dp))
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 24.dp)
-        ) {
-            items(mistakes) { m -> MistakeCard(m) }
+
+        when (val s = state) {
+            MistakesUiState.Loading -> LoadingView()
+            is MistakesUiState.Error -> ErrorView(s.message)
+            is MistakesUiState.Loaded ->
+                if (s.mistakes.isEmpty()) EmptyView()
+                else MistakesList(s.mistakes)
         }
     }
 }
 
 @Composable
-private fun MistakeCard(m: Mistake) {
+private fun LoadingView() {
+    Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(color = PrimaryBlue, strokeWidth = 2.dp, modifier = Modifier.size(28.dp))
+    }
+}
+
+@Composable
+private fun ErrorView(message: String) {
+    Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
+        Text(text = "Couldn't load mistakes: $message", color = IssueRed, fontSize = 13.sp)
+    }
+}
+
+@Composable
+private fun EmptyView() {
+    Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
+        Text(
+            text = "No mistakes recorded yet — analyze a video to see your results here.",
+            color = TextMuted,
+            fontSize = 13.sp
+        )
+    }
+}
+
+@Composable
+private fun MistakesList(items: List<UserMistakeDetailDto>) {
+    LazyColumn(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 24.dp)
+    ) {
+        items(items, key = { it.user_mistake_id }) { m -> MistakeCard(m) }
+    }
+}
+
+@Composable
+private fun MistakeCard(m: UserMistakeDetailDto) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -155,7 +174,12 @@ private fun MistakeCard(m: Mistake) {
                 .background(UploadTint),
             contentAlignment = Alignment.Center
         ) {
-            Icon(m.icon, contentDescription = null, tint = m.iconTint, modifier = Modifier.size(28.dp))
+            Icon(
+                iconFor(m.icon_code),
+                contentDescription = null,
+                tint = parseTintHex(m.icon_tint_hex),
+                modifier = Modifier.size(28.dp)
+            )
         }
         Spacer(Modifier.size(12.dp))
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -167,7 +191,7 @@ private fun MistakeCard(m: Mistake) {
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
-                SeverityBadge(m.severity)
+                SeverityBadge(severityStyle(m.severity))
             }
             Spacer(Modifier.size(4.dp))
             Text(
@@ -177,10 +201,10 @@ private fun MistakeCard(m: Mistake) {
             )
             Spacer(Modifier.size(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                SportTag(m.sport)
+                SportTag(sportLabel(m.sport))
                 Spacer(Modifier.weight(1f))
                 Text(
-                    text = m.users,
+                    text = relativeDetectedAt(m.detected_at),
                     color = TextSecondary,
                     fontSize = 12.sp
                 )
@@ -190,16 +214,16 @@ private fun MistakeCard(m: Mistake) {
 }
 
 @Composable
-private fun SeverityBadge(severity: Severity) {
+private fun SeverityBadge(style: SeverityStyle) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(10.dp))
-            .background(severity.bg)
+            .background(style.bg)
             .padding(horizontal = 10.dp, vertical = 3.dp)
     ) {
         Text(
-            text = severity.label,
-            color = severity.fg,
+            text = style.label,
+            color = style.fg,
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold
         )
@@ -221,4 +245,9 @@ private fun SportTag(sport: String) {
             fontWeight = FontWeight.SemiBold
         )
     }
+}
+
+private fun relativeDetectedAt(iso: String): String {
+    val date = iso.substringBefore('T')
+    return if (date.isNotEmpty() && date != iso) date else iso
 }

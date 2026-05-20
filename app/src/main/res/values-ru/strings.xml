@@ -1,7 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">My Application</string>
     <plurals name="week_ago">
         <item quantity="one">%1$d week ago</item>
+        <item quantity="few">%1$d weeks ago</item>
         <item quantity="other">%1$d weeks ago</item>
+        <item quantity="many">%1$d weeks ago</item>
     </plurals>
 </resources>

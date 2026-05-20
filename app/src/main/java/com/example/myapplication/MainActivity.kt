@@ -22,6 +22,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -42,10 +43,6 @@ import com.example.myapplication.ui.theme.CardSurface
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.example.myapplication.ui.theme.PrimaryBlue
 import com.example.myapplication.ui.theme.TextMuted
-import retrofit2.Retrofit
-import retrofit2.converter.scalars.ScalarsConverterFactory
-
-const val BASE_URL = "https://jsonplaceholder.typicode.com/"
 
 enum class Destination(
     val route: String,
@@ -58,12 +55,6 @@ enum class Destination(
     PROFILE("profile", "Profile", Icons.Filled.Person)
 }
 
-val typicode = Retrofit.Builder()
-    .baseUrl(BASE_URL)
-    .addConverterFactory(ScalarsConverterFactory.create())
-    .build()
-    .create(TypicodeAPI::class.java)
-
 
 class MainActivity : ComponentActivity() {
 
@@ -74,15 +65,12 @@ class MainActivity : ComponentActivity() {
                 cameraAllowedFlag.value = true
             }
         }
-    val picker = registerForActivityResult(ActivityResultContracts.GetContent())
-    { uri ->
-        uri ?: return@registerForActivityResult
-        viewModel.uriState.value = uri
-    }
+    val picker = registerForActivityResult(ActivityResultContracts.GetContent()) { _ -> }
 
     val cameraAllowedFlag = mutableStateOf(false)
-    val viewModel: MyAppViewModel by viewModels<MyAppViewModel>()
     val cameraViewModel: PreviewViewModel by viewModels()
+    val authViewModel: AuthViewModel by viewModels()
+    val mistakesViewModel: MistakesViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,6 +86,20 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             MyApplicationTheme {
+                val currentUser by authViewModel.current.collectAsState()
+                if (currentUser == null) {
+                    val isSubmitting by authViewModel.isSubmitting.collectAsState()
+                    val errorMessage by authViewModel.errorMessage.collectAsState()
+                    AuthScreen(
+                        onSubmit = { mode, username, email, password ->
+                            authViewModel.submit(mode, username, email, password)
+                        },
+                        errorMessage = errorMessage,
+                        isSubmitting = isSubmitting,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    return@MyApplicationTheme
+                }
                 val navController = rememberNavController()
                 val startDestination = Destination.SUBMIT
                 var selectedDestination by rememberSaveable { mutableIntStateOf(startDestination.ordinal) }
@@ -173,10 +175,15 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                             composable(Destination.VIDEOS.route) {
-                                VideoBrowser(Modifier.fillMaxSize())
+                                VideoBrowser(
+                                    modifier = Modifier.fillMaxSize(),
+                                    onAnalysisSucceeded = { file, result ->
+                                        mistakesViewModel.recordAnalysis(file, "skiing", result)
+                                    }
+                                )
                             }
                             composable(Destination.MISTAKES.route) {
-                                MistakesScreen(Modifier.fillMaxSize())
+                                MistakesScreen(mistakesViewModel, Modifier.fillMaxSize())
                             }
                             composable(Destination.PROFILE.route) {
                                 ProfileScreen(Modifier.fillMaxSize())
