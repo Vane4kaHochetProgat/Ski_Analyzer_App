@@ -1,10 +1,123 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">My Application</string>
+    <string name="app_name">Моё приложение</string>
+
+    <!-- Auth -->
+    <string name="auth_title_login">С возвращением</string>
+    <string name="auth_title_register">Создайте аккаунт</string>
+    <string name="auth_subtitle_login">Войдите, чтобы продолжать улучшаться</string>
+    <string name="auth_subtitle_register">Отслеживайте технику и прогресс</string>
+    <string name="auth_mode_login">Войти</string>
+    <string name="auth_mode_register">Регистрация</string>
+    <string name="auth_field_username">Имя пользователя</string>
+    <string name="auth_field_username_hint">alex_skier</string>
+    <string name="auth_field_email">Email</string>
+    <string name="auth_field_email_hint">you@example.com</string>
+    <string name="auth_field_password">Пароль</string>
+    <string name="auth_field_password_hint">Минимум 8 символов</string>
+    <string name="auth_password_show">Показать пароль</string>
+    <string name="auth_password_hide">Скрыть пароль</string>
+    <string name="auth_button_login">Войти</string>
+    <string name="auth_button_register">Создать аккаунт</string>
+    <string name="auth_button_login_busy">Входим...</string>
+    <string name="auth_button_register_busy">Создаём аккаунт...</string>
+    <string name="auth_have_account">"Уже есть аккаунт? "</string>
+    <string name="auth_no_account">"Ещё нет аккаунта? "</string>
+    <string name="auth_switch_to_login">Войти</string>
+    <string name="auth_switch_to_register">Создать</string>
+    <string name="auth_error_invalid_credentials">Неверный email или пароль</string>
+    <string name="auth_error_user_exists">Имя пользователя или email уже заняты</string>
+    <string name="auth_error_server">Ошибка сервера (%1$d)</string>
+    <string name="auth_error_network">Ошибка сети: %1$s</string>
+
+    <!-- Mistakes -->
+    <string name="mistakes_title">Ваши ошибки</string>
+    <string name="mistakes_subtitle">Ошибки техники, обнаруженные в ваших видео</string>
+    <string name="mistakes_error_loading">Не удалось загрузить ошибки: %1$s</string>
+    <string name="mistakes_empty">Ошибок пока нет — проанализируйте видео, чтобы увидеть результаты здесь.</string>
+    <string name="mistakes_not_signed_in">Вы не вошли в аккаунт</string>
+    <string name="severity_high">высокая</string>
+    <string name="severity_medium">средняя</string>
+    <string name="severity_low">низкая</string>
+    <string name="sport_skiing">Лыжи</string>
+    <string name="sport_snowboarding">Сноуборд</string>
+    <string name="sport_both">Оба</string>
+
+    <!-- Profile -->
+    <string name="profile_title">Профиль</string>
+    <string name="profile_stat_videos">Видео</string>
+
+    <!-- Submit -->
+    <string name="submit_title">Загрузить видео</string>
+    <string name="submit_record_with_camera">Снять на камеру</string>
+    <string name="submit_field_video_title">Название видео</string>
+    <string name="submit_field_video_title_hint">Например, отработка параллельного поворота</string>
+    <string name="submit_field_sport_type">Вид спорта</string>
+    <string name="submit_upload_title">Загрузите видео катания</string>
+    <string name="submit_upload_subtitle">MP4, MOV до 100 МБ</string>
+    <string name="submit_upload_cd">Загрузить</string>
+    <string name="submit_analyze_button">Анализировать технику</string>
+    <string name="submit_refreshing">Обновляем...</string>
+
+    <!-- Video Browser -->
+    <string name="videos_title">Мои видео</string>
+    <string name="videos_empty">Видео ещё не записаны</string>
+    <string name="videos_close">Закрыть</string>
+    <string name="videos_send_to_server">Отправить на сервер</string>
+    <string name="videos_delete_title">Удалить это видео?</string>
+    <string name="videos_delete_message">«%1$s» будет удалено с устройства. Это нельзя отменить.</string>
+    <string name="videos_delete_confirm">Удалить</string>
+    <string name="videos_cancel">Отмена</string>
+    <string name="videos_pending">В ожидании</string>
+    <string name="videos_delete_cd">Удалить видео</string>
+    <string name="videos_play_cd">Воспроизвести</string>
+    <string name="videos_recording_prefix">Запись %1$s</string>
+    <string name="videos_just_now">только что</string>
+    <string name="videos_uploading">Загружаем…</string>
+    <string name="videos_upload_failed">Ошибка загрузки: %1$s</string>
+    <string name="videos_status">Статус: %1$s</string>
+    <string name="videos_overall_score">Общий балл: %1$s</string>
+    <string name="videos_recommendations">Рекомендации:</string>
+    <string name="videos_annotated">Размеченное видео: %1$s</string>
+    <string name="videos_charts">Графики: %1$s</string>
+    <string name="videos_angle_line">%1$s: плохо %2$s%%, среднее %3$s°, макс %4$s°</string>
+    <string name="videos_critical_suffix">" (критично)"</string>
+
+    <!-- Navigation -->
+    <string name="nav_submit">Загрузить</string>
+    <string name="nav_videos">Видео</string>
+    <string name="nav_mistakes">Ошибки</string>
+    <string name="nav_profile">Профиль</string>
+    <string name="camera_permission_required">Для работы камеры нужно разрешение</string>
+
     <plurals name="week_ago">
-        <item quantity="one">%1$d week ago</item>
-        <item quantity="few">%1$d weeks ago</item>
-        <item quantity="other">%1$d weeks ago</item>
-        <item quantity="many">%1$d weeks ago</item>
+        <item quantity="one">%1$d неделю назад</item>
+        <item quantity="few">%1$d недели назад</item>
+        <item quantity="many">%1$d недель назад</item>
+        <item quantity="other">%1$d недель назад</item>
+    </plurals>
+    <plurals name="days_ago">
+        <item quantity="one">%1$d день назад</item>
+        <item quantity="few">%1$d дня назад</item>
+        <item quantity="many">%1$d дней назад</item>
+        <item quantity="other">%1$d дней назад</item>
+    </plurals>
+    <plurals name="hours_ago">
+        <item quantity="one">%1$d час назад</item>
+        <item quantity="few">%1$d часа назад</item>
+        <item quantity="many">%1$d часов назад</item>
+        <item quantity="other">%1$d часов назад</item>
+    </plurals>
+    <plurals name="minutes_ago">
+        <item quantity="one">%1$d минуту назад</item>
+        <item quantity="few">%1$d минуты назад</item>
+        <item quantity="many">%1$d минут назад</item>
+        <item quantity="other">%1$d минут назад</item>
+    </plurals>
+    <plurals name="videos_count_analyzed">
+        <item quantity="one">Проанализировано %1$d видео</item>
+        <item quantity="few">Проанализировано %1$d видео</item>
+        <item quantity="many">Проанализировано %1$d видео</item>
+        <item quantity="other">Проанализировано %1$d видео</item>
     </plurals>
 </resources>

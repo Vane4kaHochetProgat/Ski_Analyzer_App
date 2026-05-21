@@ -22,6 +22,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.annotation.StringRes
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -31,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,13 +48,13 @@ import com.example.myapplication.ui.theme.TextMuted
 
 enum class Destination(
     val route: String,
-    val label: String,
+    @StringRes val labelRes: Int,
     val icon: ImageVector
 ) {
-    SUBMIT("submit", "Submit", Icons.Filled.Upload),
-    VIDEOS("videos", "Videos", Icons.Filled.Videocam),
-    MISTAKES("mistakes", "Mistakes", Icons.Filled.ErrorOutline),
-    PROFILE("profile", "Profile", Icons.Filled.Person)
+    SUBMIT("submit", R.string.nav_submit, Icons.Filled.Upload),
+    VIDEOS("videos", R.string.nav_videos, Icons.Filled.Videocam),
+    MISTAKES("mistakes", R.string.nav_mistakes, Icons.Filled.ErrorOutline),
+    PROFILE("profile", R.string.nav_profile, Icons.Filled.Person)
 }
 
 
@@ -71,6 +73,7 @@ class MainActivity : ComponentActivity() {
     val cameraViewModel: PreviewViewModel by viewModels()
     val authViewModel: AuthViewModel by viewModels()
     val mistakesViewModel: MistakesViewModel by viewModels()
+    val profileViewModel: ProfileViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,12 +92,12 @@ class MainActivity : ComponentActivity() {
                 val currentUser by authViewModel.current.collectAsState()
                 if (currentUser == null) {
                     val isSubmitting by authViewModel.isSubmitting.collectAsState()
-                    val errorMessage by authViewModel.errorMessage.collectAsState()
+                    val error by authViewModel.errorMessage.collectAsState()
                     AuthScreen(
                         onSubmit = { mode, username, email, password ->
                             authViewModel.submit(mode, username, email, password)
                         },
-                        errorMessage = errorMessage,
+                        error = error,
                         isSubmitting = isSubmitting,
                         modifier = Modifier.fillMaxSize()
                     )
@@ -113,6 +116,7 @@ class MainActivity : ComponentActivity() {
                             windowInsets = NavigationBarDefaults.windowInsets
                         ) {
                             Destination.entries.forEachIndexed { index, destination ->
+                                val label = stringResource(destination.labelRes)
                                 NavigationBarItem(
                                     selected = selectedDestination == index,
                                     onClick = {
@@ -128,12 +132,12 @@ class MainActivity : ComponentActivity() {
                                     icon = {
                                         Icon(
                                             destination.icon,
-                                            contentDescription = destination.label
+                                            contentDescription = label
                                         )
                                     },
                                     label = {
                                         Text(
-                                            text = destination.label,
+                                            text = label,
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Medium
                                         )
@@ -171,7 +175,7 @@ class MainActivity : ComponentActivity() {
                                 if (cameraAllowedFlag.value) {
                                     MyCameraViewfinder(cameraViewModel, Modifier.fillMaxSize())
                                 } else {
-                                    Text(text = "Camera needs your permission to open")
+                                    Text(text = stringResource(R.string.camera_permission_required))
                                 }
                             }
                             composable(Destination.VIDEOS.route) {
@@ -186,7 +190,7 @@ class MainActivity : ComponentActivity() {
                                 MistakesScreen(mistakesViewModel, Modifier.fillMaxSize())
                             }
                             composable(Destination.PROFILE.route) {
-                                ProfileScreen(Modifier.fillMaxSize())
+                                ProfileScreen(profileViewModel, Modifier.fillMaxSize())
                             }
                         }
                     }

@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,18 +53,19 @@ import com.example.myapplication.ui.theme.TextPrimary
 import com.example.myapplication.ui.theme.TextSecondary
 import com.example.myapplication.ui.theme.UploadTint
 
-private data class SeverityStyle(val label: String, val bg: Color, val fg: Color)
+private data class SeverityStyle(val labelRes: Int, val bg: Color, val fg: Color)
 
 private fun severityStyle(code: String): SeverityStyle = when (code.lowercase()) {
-    "high"   -> SeverityStyle("high",   SeverityHighBg, SeverityHighFg)
-    "medium" -> SeverityStyle("medium", SeverityMedBg,  SeverityMedFg)
-    else     -> SeverityStyle("low",    SeverityLowBg,  SeverityLowFg)
+    "high"   -> SeverityStyle(R.string.severity_high,   SeverityHighBg, SeverityHighFg)
+    "medium" -> SeverityStyle(R.string.severity_medium, SeverityMedBg,  SeverityMedFg)
+    else     -> SeverityStyle(R.string.severity_low,    SeverityLowBg,  SeverityLowFg)
 }
 
+@Composable
 private fun sportLabel(code: String): String = when (code.lowercase()) {
-    "skiing"       -> "Skiing"
-    "snowboarding" -> "Snowboarding"
-    "both"         -> "Both"
+    "skiing"       -> stringResource(R.string.sport_skiing)
+    "snowboarding" -> stringResource(R.string.sport_snowboarding)
+    "both"         -> stringResource(R.string.sport_both)
     else           -> code.replaceFirstChar { it.uppercase() }
 }
 
@@ -89,9 +91,12 @@ fun MistakesScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsState()
-
     LaunchedEffect(Unit) { viewModel.refresh() }
+    MistakesScreenContent(state, modifier)
+}
 
+@Composable
+fun MistakesScreenContent(state: MistakesUiState, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -99,25 +104,26 @@ fun MistakesScreen(
             .padding(top = 12.dp)
     ) {
         Text(
-            text = "Your Mistakes",
+            text = stringResource(R.string.mistakes_title),
             color = TextPrimary,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
         Spacer(Modifier.size(2.dp))
         Text(
-            text = "Technique errors detected in your videos",
+            text = stringResource(R.string.mistakes_subtitle),
             color = TextSecondary,
             fontSize = 13.sp
         )
         Spacer(Modifier.size(14.dp))
 
-        when (val s = state) {
+        when (state) {
             MistakesUiState.Loading -> LoadingView()
-            is MistakesUiState.Error -> ErrorView(s.message)
+            MistakesUiState.NotSignedIn -> ErrorView(stringResource(R.string.mistakes_not_signed_in))
+            is MistakesUiState.Error -> ErrorView(state.message)
             is MistakesUiState.Loaded ->
-                if (s.mistakes.isEmpty()) EmptyView()
-                else MistakesList(s.mistakes)
+                if (state.mistakes.isEmpty()) EmptyView()
+                else MistakesList(state.mistakes)
         }
     }
 }
@@ -132,7 +138,11 @@ private fun LoadingView() {
 @Composable
 private fun ErrorView(message: String) {
     Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
-        Text(text = "Couldn't load mistakes: $message", color = IssueRed, fontSize = 13.sp)
+        Text(
+            text = stringResource(R.string.mistakes_error_loading, message),
+            color = IssueRed,
+            fontSize = 13.sp
+        )
     }
 }
 
@@ -140,7 +150,7 @@ private fun ErrorView(message: String) {
 private fun EmptyView() {
     Box(modifier = Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
         Text(
-            text = "No mistakes recorded yet — analyze a video to see your results here.",
+            text = stringResource(R.string.mistakes_empty),
             color = TextMuted,
             fontSize = 13.sp
         )
@@ -222,7 +232,7 @@ private fun SeverityBadge(style: SeverityStyle) {
             .padding(horizontal = 10.dp, vertical = 3.dp)
     ) {
         Text(
-            text = style.label,
+            text = stringResource(style.labelRes),
             color = style.fg,
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold

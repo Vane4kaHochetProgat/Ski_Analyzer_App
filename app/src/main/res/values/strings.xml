@@ -1,7 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">My Application</string>
+
+    <!-- Auth -->
+    <string name="auth_title_login">Welcome back</string>
+    <string name="auth_title_register">Create your account</string>
+    <string name="auth_subtitle_login">Sign in to keep improving</string>
+    <string name="auth_subtitle_register">Track your technique and progress</string>
+    <string name="auth_mode_login">Sign in</string>
+    <string name="auth_mode_register">Register</string>
+    <string name="auth_field_username">Username</string>
+    <string name="auth_field_username_hint">alex_skier</string>
+    <string name="auth_field_email">Email</string>
+    <string name="auth_field_email_hint">you@example.com</string>
+    <string name="auth_field_password">Password</string>
+    <string name="auth_field_password_hint">At least 8 characters</string>
+    <string name="auth_password_show">Show password</string>
+    <string name="auth_password_hide">Hide password</string>
+    <string name="auth_button_login">Sign in</string>
+    <string name="auth_button_register">Create account</string>
+    <string name="auth_button_login_busy">Signing in...</string>
+    <string name="auth_button_register_busy">Creating account...</string>
+    <string name="auth_have_account">"Already have an account? "</string>
+    <string name="auth_no_account">"No account yet? "</string>
+    <string name="auth_switch_to_login">Sign in</string>
+    <string name="auth_switch_to_register">Create one</string>
+    <string name="auth_error_invalid_credentials">Invalid email or password</string>
+    <string name="auth_error_user_exists">Username or email already taken</string>
+    <string name="auth_error_server">Server error (%1$d)</string>
+    <string name="auth_error_network">Network error: %1$s</string>
+
+    <!-- Mistakes -->
+    <string name="mistakes_title">Your Mistakes</string>
+    <string name="mistakes_subtitle">Technique errors detected in your videos</string>
+    <string name="mistakes_error_loading">Couldn\'t load mistakes: %1$s</string>
+    <string name="mistakes_empty">No mistakes recorded yet — analyze a video to see your results here.</string>
+    <string name="mistakes_not_signed_in">Not signed in</string>
+    <string name="severity_high">high</string>
+    <string name="severity_medium">medium</string>
+    <string name="severity_low">low</string>
+    <string name="sport_skiing">Skiing</string>
+    <string name="sport_snowboarding">Snowboarding</string>
+    <string name="sport_both">Both</string>
+
+    <!-- Profile -->
+    <string name="profile_title">Profile</string>
+    <string name="profile_stat_videos">Videos</string>
+
+    <!-- Submit -->
+    <string name="submit_title">Submit Video</string>
+    <string name="submit_record_with_camera">Record with camera</string>
+    <string name="submit_field_video_title">Video Title</string>
+    <string name="submit_field_video_title_hint">e.g., Parallel turn practice</string>
+    <string name="submit_field_sport_type">Sport Type</string>
+    <string name="submit_upload_title">Upload your skiing video</string>
+    <string name="submit_upload_subtitle">MP4, MOV up to 100MB</string>
+    <string name="submit_upload_cd">Upload</string>
+    <string name="submit_analyze_button">Analyze Technique</string>
+    <string name="submit_refreshing">Refreshing...</string>
+
+    <!-- Video Browser -->
+    <string name="videos_title">My Videos</string>
+    <string name="videos_empty">No videos recorded yet</string>
+    <string name="videos_close">Close</string>
+    <string name="videos_send_to_server">Send to server</string>
+    <string name="videos_delete_title">Delete this video?</string>
+    <string name="videos_delete_message">\"%1$s\" will be removed from this device. This can\'t be undone.</string>
+    <string name="videos_delete_confirm">Delete</string>
+    <string name="videos_cancel">Cancel</string>
+    <string name="videos_pending">Pending</string>
+    <string name="videos_delete_cd">Delete video</string>
+    <string name="videos_play_cd">Play</string>
+    <string name="videos_recording_prefix">Recording %1$s</string>
+    <string name="videos_just_now">just now</string>
+    <string name="videos_uploading">Uploading…</string>
+    <string name="videos_upload_failed">Upload failed: %1$s</string>
+    <string name="videos_status">Status: %1$s</string>
+    <string name="videos_overall_score">Overall score: %1$s</string>
+    <string name="videos_recommendations">Recommendations:</string>
+    <string name="videos_annotated">Annotated video: %1$s</string>
+    <string name="videos_charts">Charts: %1$s</string>
+    <string name="videos_angle_line">%1$s: bad %2$s%%, mean %3$s°, max %4$s°</string>
+    <string name="videos_critical_suffix">" (critical)"</string>
+
+    <!-- Navigation -->
+    <string name="nav_submit">Submit</string>
+    <string name="nav_videos">Videos</string>
+    <string name="nav_mistakes">Mistakes</string>
+    <string name="nav_profile">Profile</string>
+    <string name="camera_permission_required">Camera needs your permission to open</string>
+
     <plurals name="week_ago">
         <item quantity="one">%1$d week ago</item>
         <item quantity="other">%1$d weeks ago</item>
+    </plurals>
+    <plurals name="days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
+    <plurals name="hours_ago">
+        <item quantity="one">%1$d hour ago</item>
+        <item quantity="other">%1$d hours ago</item>
+    </plurals>
+    <plurals name="minutes_ago">
+        <item quantity="one">%1$d min ago</item>
+        <item quantity="other">%1$d min ago</item>
+    </plurals>
+    <plurals name="videos_count_analyzed">
+        <item quantity="one">%1$d video analyzed</item>
+        <item quantity="other">%1$d videos analyzed</item>
     </plurals>
 </resources>

@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -85,7 +86,7 @@ fun SubmitScreen(
                 .padding(top = 12.dp, bottom = 24.dp)
         ) {
             Text(
-                text = "Submit Video",
+                text = stringResource(R.string.submit_title),
                 color = TextPrimary,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
@@ -107,7 +108,7 @@ fun SubmitScreen(
                 )
                 Spacer(Modifier.size(4.dp))
                 Text(
-                    text = "Record with camera",
+                    text = stringResource(R.string.submit_record_with_camera),
                     color = PrimaryBlue,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
@@ -116,7 +117,7 @@ fun SubmitScreen(
 
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Video Title",
+                text = stringResource(R.string.submit_field_video_title),
                 color = TextPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold
@@ -127,7 +128,7 @@ fun SubmitScreen(
                 onValueChange = { title = it },
                 placeholder = {
                     Text(
-                        text = "e.g., Parallel turn practice",
+                        text = stringResource(R.string.submit_field_video_title_hint),
                         color = TextMuted,
                         fontSize = 14.sp
                     )
@@ -146,7 +147,7 @@ fun SubmitScreen(
 
             Spacer(Modifier.height(20.dp))
             Text(
-                text = "Sport Type",
+                text = stringResource(R.string.submit_field_sport_type),
                 color = TextPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold
@@ -158,14 +159,14 @@ fun SubmitScreen(
             ) {
                 SportPill(
                     emoji = "🎿",
-                    label = "Skiing",
+                    label = stringResource(R.string.sport_skiing),
                     selected = sport == SportType.SKIING,
                     onClick = { sport = SportType.SKIING },
                     modifier = Modifier.weight(1f)
                 )
                 SportPill(
                     emoji = "🏂",
-                    label = "Snowboarding",
+                    label = stringResource(R.string.sport_snowboarding),
                     selected = sport == SportType.SNOWBOARDING,
                     onClick = { sport = SportType.SNOWBOARDING },
                     modifier = Modifier.weight(1f)
@@ -220,21 +221,21 @@ private fun UploadCard(onClick: () -> Unit) {
             ) {
                 Icon(
                     Icons.Filled.CloudUpload,
-                    contentDescription = "Upload",
+                    contentDescription = stringResource(R.string.submit_upload_cd),
                     tint = CardSurface,
                     modifier = Modifier.size(28.dp)
                 )
             }
             Spacer(Modifier.height(14.dp))
             Text(
-                text = "Upload your skiing video",
+                text = stringResource(R.string.submit_upload_title),
                 color = TextPrimary,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "MP4, MOV up to 100MB",
+                text = stringResource(R.string.submit_upload_subtitle),
                 color = PrimaryBlue,
                 fontSize = 12.sp
             )
@@ -288,7 +289,7 @@ private fun AnalyzeButton(onClick: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Analyze Technique",
+            text = stringResource(R.string.submit_analyze_button),
             color = CardSurface,
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold
@@ -313,7 +314,7 @@ private fun RefreshingPill(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.size(8.dp))
         Text(
-            text = "Refreshing...",
+            text = stringResource(R.string.submit_refreshing),
             color = CardSurface,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,

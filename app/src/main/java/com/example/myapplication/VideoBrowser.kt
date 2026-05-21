@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -117,14 +118,14 @@ fun VideoBrowser(
             .padding(top = 12.dp)
     ) {
         Text(
-            text = "My Videos",
+            text = stringResource(R.string.videos_title),
             color = TextPrimary,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
         Spacer(Modifier.height(2.dp))
         Text(
-            text = "${files.size} videos analyzed",
+            text = pluralStringResource(R.plurals.videos_count_analyzed, files.size, files.size),
             color = TextSecondary,
             fontSize = 13.sp
         )
@@ -158,7 +159,7 @@ fun VideoBrowser(
         if (files.isEmpty()) {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text(
-                    text = "No videos recorded yet",
+                    text = stringResource(R.string.videos_empty),
                     color = TextMuted,
                     modifier = Modifier.padding(top = 40.dp)
                 )
@@ -184,9 +185,14 @@ fun VideoBrowser(
     if (target != null) {
         AlertDialog(
             onDismissRequest = { fileToDelete = null },
-            title = { Text(text = "Delete this video?") },
+            title = { Text(text = stringResource(R.string.videos_delete_title)) },
             text = {
-                Text(text = "\"${target.nameWithoutExtension.formatVideoTitle()}\" will be removed from this device. This can't be undone.")
+                Text(
+                    text = stringResource(
+                        R.string.videos_delete_message,
+                        formatVideoTitle(target.nameWithoutExtension)
+                    )
+                )
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -195,12 +201,16 @@ fun VideoBrowser(
                     files = listLocalVideos(context)
                     fileToDelete = null
                 }) {
-                    Text(text = "Delete", color = IssueRed, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = stringResource(R.string.videos_delete_confirm),
+                        color = IssueRed,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { fileToDelete = null }) {
-                    Text(text = "Cancel", color = TextSecondary)
+                    Text(text = stringResource(R.string.videos_cancel), color = TextSecondary)
                 }
             }
         )
@@ -231,7 +241,11 @@ private fun SelectedVideoPanel(
                 modifier = Modifier.weight(1f)
             )
             IconButton(onClick = onClose, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Filled.Close, contentDescription = "Close", tint = TextSecondary)
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(R.string.videos_close),
+                    tint = TextSecondary
+                )
             }
         }
         Spacer(Modifier.height(8.dp))
@@ -253,7 +267,10 @@ private fun SelectedVideoPanel(
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(text = "Send to server", fontWeight = FontWeight.SemiBold)
+            Text(
+                text = stringResource(R.string.videos_send_to_server),
+                fontWeight = FontWeight.SemiBold
+            )
         }
         UploadStatus(uploadState)
     }
@@ -289,7 +306,7 @@ private fun VideoCard(file: File, onPlay: () -> Unit, onDelete: () -> Unit) {
         Spacer(Modifier.size(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = file.nameWithoutExtension.formatVideoTitle(),
+                text = formatVideoTitle(file.nameWithoutExtension),
                 color = TextPrimary,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -320,7 +337,7 @@ private fun VideoCard(file: File, onPlay: () -> Unit, onDelete: () -> Unit) {
                 )
                 Spacer(Modifier.size(4.dp))
                 Text(
-                    text = "Pending",
+                    text = stringResource(R.string.videos_pending),
                     color = ScoreGreen,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
@@ -344,7 +361,7 @@ private fun VideoCard(file: File, onPlay: () -> Unit, onDelete: () -> Unit) {
         IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {
             Icon(
                 Icons.Filled.Delete,
-                contentDescription = "Delete video",
+                contentDescription = stringResource(R.string.videos_delete_cd),
                 tint = IssueRed,
                 modifier = Modifier.size(22.dp)
             )
@@ -360,7 +377,7 @@ private fun VideoCard(file: File, onPlay: () -> Unit, onDelete: () -> Unit) {
         ) {
             Icon(
                 Icons.Filled.PlayArrow,
-                contentDescription = "Play",
+                contentDescription = stringResource(R.string.videos_play_cd),
                 tint = CardSurface,
                 modifier = Modifier.size(22.dp)
             )
@@ -368,24 +385,23 @@ private fun VideoCard(file: File, onPlay: () -> Unit, onDelete: () -> Unit) {
     }
 }
 
-private fun String.formatVideoTitle(): String {
-    val raw = this
-    return raw.toLongOrNull()?.let { "Recording ${raw.takeLast(5)}" } ?: raw
-}
+@Composable
+private fun formatVideoTitle(raw: String): String =
+    raw.toLongOrNull()?.let { stringResource(R.string.videos_recording_prefix, raw.takeLast(5)) } ?: raw
 
 @Composable
 private fun relativeAge(epochMs: Long): String {
     val diff = System.currentTimeMillis() - epochMs
-    if (diff < 0) return "just now"
+    if (diff < 0) return stringResource(R.string.videos_just_now)
     val days = TimeUnit.MILLISECONDS.toDays(diff)
     val hours = TimeUnit.MILLISECONDS.toHours(diff)
     val minutes = TimeUnit.MILLISECONDS.toMinutes(diff)
     return when {
         days >= 7 -> pluralStringResource(R.plurals.week_ago, (days / 7).toInt(), (days / 7).toInt())
-        days >= 1 -> "$days day${if (days > 1) "s" else ""} ago"
-        hours >= 1 -> "$hours hour${if (hours > 1) "s" else ""} ago"
-        minutes >= 1 -> "$minutes min ago"
-        else -> "just now"
+        days >= 1 -> pluralStringResource(R.plurals.days_ago, days.toInt(), days.toInt())
+        hours >= 1 -> pluralStringResource(R.plurals.hours_ago, hours.toInt(), hours.toInt())
+        minutes >= 1 -> pluralStringResource(R.plurals.minutes_ago, minutes.toInt(), minutes.toInt())
+        else -> stringResource(R.string.videos_just_now)
     }
 }
 
@@ -396,10 +412,10 @@ private fun UploadStatus(state: UploadState) {
         UploadState.Uploading -> Row(modifier = Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp), color = PrimaryBlue)
             Spacer(Modifier.size(8.dp))
-            Text(text = "Uploading…", color = TextSecondary, fontSize = 13.sp)
+            Text(text = stringResource(R.string.videos_uploading), color = TextSecondary, fontSize = 13.sp)
         }
         is UploadState.Error -> Text(
-            text = "Upload failed: ${state.message}",
+            text = stringResource(R.string.videos_upload_failed, state.message),
             color = IssueRed,
             fontSize = 13.sp,
             modifier = Modifier.padding(top = 10.dp)
@@ -412,31 +428,47 @@ private fun UploadStatus(state: UploadState) {
 private fun AnalysisResultView(result: AnalysisResult) {
     Column(modifier = Modifier.padding(top = 10.dp)) {
         Text(
-            text = "Status: ${result.status}",
+            text = stringResource(R.string.videos_status, result.status),
             color = TextPrimary,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold
         )
         Text(
-            text = "Overall score: ${result.analysis.overall_score}",
+            text = stringResource(R.string.videos_overall_score, result.analysis.overall_score.toString()),
             color = TextSecondary,
             fontSize = 13.sp
         )
+        val criticalSuffix = stringResource(R.string.videos_critical_suffix)
         result.analysis.angle_analysis.forEach { a ->
+            val line = stringResource(
+                R.string.videos_angle_line,
+                a.angle,
+                a.percent_bad.toString(),
+                a.mean_diff_deg.toString(),
+                a.max_diff_deg.toString()
+            )
             Text(
-                text = "${a.angle}: bad ${a.percent_bad}%, mean ${a.mean_diff_deg}°, " +
-                    "max ${a.max_diff_deg}°${if (a.is_critical) " (critical)" else ""}",
+                text = if (a.is_critical) line + criticalSuffix else line,
                 color = TextSecondary,
                 fontSize = 12.sp
             )
         }
         if (result.analysis.recommendations.isNotEmpty()) {
-            Text(text = "Recommendations:", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = stringResource(R.string.videos_recommendations),
+                color = TextPrimary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold
+            )
             result.analysis.recommendations.forEach { rec ->
                 Text(text = "• $rec", color = TextSecondary, fontSize = 12.sp)
             }
         }
-        result.files.annotated_video?.let { Text(text = "Annotated video: $it", color = TextSecondary, fontSize = 12.sp) }
-        result.files.charts?.let { Text(text = "Charts: $it", color = TextSecondary, fontSize = 12.sp) }
+        result.files.annotated_video?.let {
+            Text(text = stringResource(R.string.videos_annotated, it), color = TextSecondary, fontSize = 12.sp)
+        }
+        result.files.charts?.let {
+            Text(text = stringResource(R.string.videos_charts, it), color = TextSecondary, fontSize = 12.sp)
+        }
     }
 }

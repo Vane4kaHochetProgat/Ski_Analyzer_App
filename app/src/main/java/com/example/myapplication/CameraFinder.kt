@@ -66,9 +66,7 @@ class PreviewViewModel : ViewModel() {
     val surfaceRequests: StateFlow<SurfaceRequest?>
         get() = _surfaceRequests.asStateFlow()
 
-    fun focusOnPoint(surfaceBounds: Size, x: Float, y: Float) {
-        // Create point for CameraX's CameraControl.startFocusAndMetering() and submit...
-    }
+    fun focusOnPoint(surfaceBounds: Size, x: Float, y: Float) {}
 
     suspend fun startCamera(appContext: Context, lifecycleOwner: LifecycleOwner) {
 
@@ -81,7 +79,6 @@ class PreviewViewModel : ViewModel() {
             lifecycleOwner, DEFAULT_BACK_CAMERA, cameraPreviewUseCase, videoCapture
         )
 
-        // Cancellation signals we're done with the camera
         try {
             awaitCancellation()
         } finally {
@@ -132,7 +129,6 @@ fun MyCameraViewfinder(viewModel: PreviewViewModel, modifier: Modifier = Modifie
 
     currentSurfaceRequest?.let { surfaceRequest ->
 
-        // CoordinateTransformer for transforming from Offsets to Surface coordinates
         val coordinateTransformer = remember { MutableCoordinateTransformer() }
 
         CameraXViewfinder(
