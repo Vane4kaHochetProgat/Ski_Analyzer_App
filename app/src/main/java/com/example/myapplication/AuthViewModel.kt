@@ -1,3 +1,24 @@
+/**
+ * ViewModel powering [AuthScreen] — handles login and registration via
+ * [BackendAPI] and persists the resulting user through [UserSession].
+ *
+ * Exposed state:
+ *   * `current`     — `StateFlow<StoredUser?>`: the persisted session,
+ *                     drives the top-level screen switch in [MainActivity].
+ *   * `isSubmitting`— in-flight indicator; second `submit()` calls are
+ *                     ignored while one is active (see [submit]).
+ *   * `errorMessage`— most recent [AuthError]; UI maps it to localized text.
+ *
+ * Error mapping in [submit]:
+ *   * HTTP 401 → [AuthError.InvalidCredentials]
+ *   * HTTP 409 → [AuthError.UserExists]
+ *   * other HTTP codes → [AuthError.ServerError] with the status code
+ *   * any other exception (timeout, IO) → [AuthError.NetworkError]
+ *
+ * Constructor params are overridable for tests — production callers use
+ * `@JvmOverloads` defaults (`backendApi`, `UserSession(app)`, `Dispatchers.IO`).
+ */
+
 package com.example.myapplication
 
 import android.app.Application
@@ -43,7 +64,7 @@ class AuthViewModel @JvmOverloads constructor(
         _errorMessage.value = null
         viewModelScope.launch {
             try {
-                val user = withContext(ioDispatcher) {
+                val auth = withContext(ioDispatcher) {
                     when (mode) {
                         AuthMode.LOGIN ->
                             api.login(LoginRequest(email.trim(), password))
@@ -51,7 +72,7 @@ class AuthViewModel @JvmOverloads constructor(
                             api.register(RegisterRequest(username.trim(), email.trim(), password))
                     }
                 }
-                session.save(user)
+                session.save(auth.user, auth.access_token)
             } catch (e: HttpException) {
                 _errorMessage.value = when (e.code()) {
                     401 -> AuthError.InvalidCredentials

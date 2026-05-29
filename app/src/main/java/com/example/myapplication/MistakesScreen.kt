@@ -1,3 +1,31 @@
+/**
+ * Mistakes tab — renders the user's recorded mistakes from [MistakesViewModel].
+ *
+ * Public composables:
+ *   * [MistakesScreen]         — wires the ViewModel: triggers `refresh()`
+ *                                on first composition.
+ *   * [MistakesScreenContent]  — stateless renderer that switches on
+ *                                [MistakesUiState] (Loading → spinner,
+ *                                NotSignedIn / Error → red message, empty
+ *                                Loaded → placeholder, populated Loaded →
+ *                                [MistakesList]).
+ *
+ * Helpers (file-private):
+ *   * [severityStyle]   — maps "high"/"medium"/"low" to a [SeverityStyle]
+ *                         (label + bg/fg color from the palette).
+ *   * [sportLabel]      — server sport code → localized label.
+ *   * [iconFor]         — server icon code (e.g. "warning", "rotate_right")
+ *                         → Material [ImageVector]; unknown codes fall back
+ *                         to [Icons.Filled.ErrorOutline].
+ *   * [parseTintHex]    — "#RRGGBB" string → [Color] (defaults to neutral
+ *                         gray on missing/invalid input).
+ *   * [relativeDetectedAt] — strips the time portion off an ISO timestamp.
+ *
+ * Each [MistakeCard] shows the icon (tinted by the server-supplied hex),
+ * title, description, a colored severity badge, a sport tag, and the
+ * detection date.
+ */
+
 package com.example.myapplication
 
 import androidx.compose.foundation.background
@@ -28,6 +56,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -157,19 +186,45 @@ private fun EmptyView() {
     }
 }
 
+private data class AggregatedMistake(
+    val code: String,
+    val count: Int,
+    val sample: UserMistakeDetailDto,
+    val highestSeverity: String,
+    val lastDetected: String,
+)
+
+private fun aggregate(items: List<UserMistakeDetailDto>): List<AggregatedMistake> {
+    val severityRank = mapOf("low" to 0, "medium" to 1, "high" to 2)
+    return items.groupBy { it.mistake_code }
+        .map { (code, group) ->
+            val worst = group.maxByOrNull { severityRank[it.severity.lowercase()] ?: 0 }!!
+            val latest = group.maxByOrNull { it.detected_at }!!.detected_at
+            AggregatedMistake(
+                code = code,
+                count = group.size,
+                sample = group.first(),
+                highestSeverity = worst.severity,
+                lastDetected = latest.substringBefore('T'),
+            )
+        }
+        .sortedByDescending { it.count }
+}
+
 @Composable
 private fun MistakesList(items: List<UserMistakeDetailDto>) {
+    val aggregated = remember(items) { aggregate(items) }
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(bottom = 24.dp)
     ) {
-        items(items, key = { it.user_mistake_id }) { m -> MistakeCard(m) }
+        items(aggregated, key = { it.code }) { m -> AggregatedMistakeCard(m) }
     }
 }
 
 @Composable
-private fun MistakeCard(m: UserMistakeDetailDto) {
+private fun AggregatedMistakeCard(m: AggregatedMistake) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -185,9 +240,9 @@ private fun MistakeCard(m: UserMistakeDetailDto) {
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                iconFor(m.icon_code),
+                iconFor(m.sample.icon_code),
                 contentDescription = null,
-                tint = parseTintHex(m.icon_tint_hex),
+                tint = parseTintHex(m.sample.icon_tint_hex),
                 modifier = Modifier.size(28.dp)
             )
         }
@@ -195,31 +250,50 @@ private fun MistakeCard(m: UserMistakeDetailDto) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = m.title,
+                    text = m.sample.title,
                     color = TextPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
-                SeverityBadge(severityStyle(m.severity))
+                FrequencyBadge(m.count)
+                Spacer(Modifier.size(6.dp))
+                SeverityBadge(severityStyle(m.highestSeverity))
             }
             Spacer(Modifier.size(4.dp))
             Text(
-                text = m.description,
+                text = m.sample.description,
                 color = TextSecondary,
                 fontSize = 13.sp
             )
             Spacer(Modifier.size(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                SportTag(sportLabel(m.sport))
+                SportTag(sportLabel(m.sample.sport))
                 Spacer(Modifier.weight(1f))
                 Text(
-                    text = relativeDetectedAt(m.detected_at),
+                    text = m.lastDetected,
                     color = TextSecondary,
-                    fontSize = 12.sp
+                    fontSize = 12.sp,
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun FrequencyBadge(count: Int) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(PrimaryBlue)
+            .padding(horizontal = 10.dp, vertical = 3.dp)
+    ) {
+        Text(
+            text = "×$count",
+            color = CardSurface,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 
@@ -257,7 +331,3 @@ private fun SportTag(sport: String) {
     }
 }
 
-private fun relativeDetectedAt(iso: String): String {
-    val date = iso.substringBefore('T')
-    return if (date.isNotEmpty() && date != iso) date else iso
-}

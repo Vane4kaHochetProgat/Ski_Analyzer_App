@@ -1,3 +1,24 @@
+/**
+ * Sign-in / sign-up screen shown when no user is in [UserSession].
+ *
+ * Single Composable with a mode toggle ([AuthMode.LOGIN] / [AuthMode.REGISTER])
+ * — the username field appears only in REGISTER mode. The "submit" button is
+ * disabled until basic validation passes:
+ *   * email non-blank;
+ *   * password length ≥ 8;
+ *   * username length ≥ 3 (REGISTER only).
+ *
+ * Error from [AuthViewModel] is mapped to a localized string here:
+ *   * [AuthError.InvalidCredentials] → "wrong email or password"
+ *   * [AuthError.UserExists]         → "user already exists"
+ *   * [AuthError.ServerError]        → "server error (<code>)"
+ *   * [AuthError.NetworkError]       → "network error: <detail>"
+ *
+ * Private composables ([ModeToggle], [ToggleChip], [FieldLabel],
+ * [AuthTextField], [PrimaryButton]) are presentation-only. Two `@Preview`
+ * variants cover the empty login state and the error state.
+ */
+
 package com.example.myapplication
 
 import androidx.compose.foundation.BorderStroke

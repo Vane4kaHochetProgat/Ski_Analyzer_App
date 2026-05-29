@@ -1,3 +1,26 @@
+/**
+ * Videos tab — lists locally-stored `.mp4` files and uploads them to the
+ * analysis service.
+ *
+ * File source: `context.filesDir` (everything written by [PreviewViewModel]
+ * lands here), sorted by `lastModified` descending. The list refreshes after
+ * a successful delete.
+ *
+ * Selecting a card opens [SelectedVideoPanel] with an ExoPlayer preview and
+ * a "send to server" button. That button calls [uploadVideoForAnalysis] on
+ * `Dispatchers.IO`; on success it (a) calls back into
+ * [MistakesViewModel.recordAnalysis] via `onAnalysisSucceeded`, and (b)
+ * shows the parsed [AnalysisResult] inline through [AnalysisResultView].
+ *
+ * UI state is local to the composable:
+ *   * [UploadState] sealed class      — Idle / Uploading / Success / Error.
+ *   * `selectedFile` / `fileToDelete` — view-model-free, kept in `remember`.
+ *
+ * Delete uses a confirmation [AlertDialog]; the player is released in a
+ * `DisposableEffect.onDispose`. Relative timestamps for cards are produced
+ * by [relativeAge] using `plurals` resources for localization.
+ */
+
 package com.example.myapplication
 
 import android.net.Uri
@@ -59,21 +82,23 @@ import com.example.myapplication.ui.theme.CardSurface
 import com.example.myapplication.ui.theme.IssueRed
 import com.example.myapplication.ui.theme.PrimaryBlue
 import com.example.myapplication.ui.theme.ScoreGreen
+import com.example.myapplication.ui.theme.UploadTint
 import com.example.myapplication.ui.theme.TextMuted
 import com.example.myapplication.ui.theme.TextPrimary
 import com.example.myapplication.ui.theme.TextSecondary
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.TimeUnit
 
 sealed class UploadState {
     object Idle : UploadState()
     object Uploading : UploadState()
-    data class Success(val result: AnalysisResult) : UploadState()
+    data class Success(val result: AnalysisResult, val source: AnalysisSource = AnalysisSource.SERVER) : UploadState()
+    object QueuedOffline : UploadState()
     data class Error(val message: String) : UploadState()
 }
+
+enum class AnalysisSource { SERVER, LOCAL }
 
 private fun listLocalVideos(context: android.content.Context): List<File> =
     context.filesDir
@@ -105,6 +130,45 @@ fun VideoBrowser(
             player.setMediaItem(MediaItem.fromUri(Uri.fromFile(file)))
             player.prepare()
             player.play()
+
+            val store = com.example.myapplication.analysis.PendingAnalysisStore(context)
+            store.result(file.absolutePath)?.let { stored ->
+                uploadState = UploadState.Success(stored, AnalysisSource.SERVER)
+                onAnalysisSucceeded(file, stored)
+            }
+            val workName = com.example.myapplication.analysis.UploadWorker.workName(file)
+            androidx.work.WorkManager.getInstance(context)
+                .getWorkInfosForUniqueWorkFlow(workName)
+                .collect { infos ->
+                    val info = infos.firstOrNull() ?: return@collect
+                    when (info.state) {
+                        androidx.work.WorkInfo.State.ENQUEUED,
+                        androidx.work.WorkInfo.State.BLOCKED,
+                        androidx.work.WorkInfo.State.RUNNING -> {
+                            if (uploadState !is UploadState.Success) {
+                                uploadState = UploadState.QueuedOffline
+                            }
+                        }
+                        androidx.work.WorkInfo.State.SUCCEEDED -> {
+                            val json = info.outputData.getString(
+                                com.example.myapplication.analysis.UploadWorker.KEY_RESULT_JSON
+                            )
+                            val parsed = json?.let {
+                                runCatching { com.google.gson.Gson().fromJson(it, AnalysisResult::class.java) }.getOrNull()
+                            } ?: store.result(file.absolutePath)
+                            if (parsed != null) {
+                                uploadState = UploadState.Success(parsed, AnalysisSource.SERVER)
+                                onAnalysisSucceeded(file, parsed)
+                            }
+                        }
+                        androidx.work.WorkInfo.State.FAILED,
+                        androidx.work.WorkInfo.State.CANCELLED -> {
+                            if (uploadState !is UploadState.Success) {
+                                uploadState = UploadState.Error("Не удалось отправить из очереди")
+                            }
+                        }
+                    }
+                }
         } else {
             player.stop()
             player.clearMediaItems()
@@ -142,11 +206,19 @@ fun VideoBrowser(
                     uploadState = UploadState.Uploading
                     scope.launch {
                         uploadState = try {
-                            val result = withContext(Dispatchers.IO) {
-                                uploadVideoForAnalysis(current)
+                            val orchestrator = com.example.myapplication.analysis.AnalysisOrchestrator(context)
+                            when (val outcome = orchestrator.analyze(current)) {
+                                is com.example.myapplication.analysis.AnalysisOutcome.Done -> {
+                                    onAnalysisSucceeded(current, outcome.result)
+                                    val src = when (outcome.source) {
+                                        com.example.myapplication.analysis.AnalysisOutcome.Source.SERVER -> AnalysisSource.SERVER
+                                        com.example.myapplication.analysis.AnalysisOutcome.Source.LOCAL -> AnalysisSource.LOCAL
+                                    }
+                                    UploadState.Success(outcome.result, src)
+                                }
+                                is com.example.myapplication.analysis.AnalysisOutcome.QueuedOffline -> UploadState.QueuedOffline
+                                is com.example.myapplication.analysis.AnalysisOutcome.Failed -> UploadState.Error(outcome.message)
                             }
-                            onAnalysisSucceeded(current, result)
-                            UploadState.Success(result)
                         } catch (t: Throwable) {
                             UploadState.Error(t.message ?: t.javaClass.simpleName)
                         }
@@ -420,55 +492,93 @@ private fun UploadStatus(state: UploadState) {
             fontSize = 13.sp,
             modifier = Modifier.padding(top = 10.dp)
         )
-        is UploadState.Success -> AnalysisResultView(state.result)
+        UploadState.QueuedOffline -> Row(
+            modifier = Modifier.padding(top = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp), color = PrimaryBlue)
+            Spacer(Modifier.size(8.dp))
+            Text(
+                text = "Ждём интернет — отправим автоматически",
+                color = TextSecondary,
+                fontSize = 13.sp,
+            )
+        }
+        is UploadState.Success -> Column {
+            if (state.source == AnalysisSource.LOCAL) {
+                Text(
+                    text = "Анализ выполнен локально (без интернета)",
+                    color = TextMuted,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
+            AnalysisResultView(state.result)
+        }
     }
 }
 
 @Composable
 private fun AnalysisResultView(result: AnalysisResult) {
-    Column(modifier = Modifier.padding(top = 10.dp)) {
-        Text(
-            text = stringResource(R.string.videos_status, result.status),
-            color = TextPrimary,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-        Text(
-            text = stringResource(R.string.videos_overall_score, result.analysis.overall_score.toString()),
-            color = TextSecondary,
-            fontSize = 13.sp
-        )
-        val criticalSuffix = stringResource(R.string.videos_critical_suffix)
-        result.analysis.angle_analysis.forEach { a ->
-            val line = stringResource(
-                R.string.videos_angle_line,
-                a.angle,
-                a.percent_bad.toString(),
-                a.mean_diff_deg.toString(),
-                a.max_diff_deg.toString()
-            )
-            Text(
-                text = if (a.is_critical) line + criticalSuffix else line,
-                color = TextSecondary,
-                fontSize = 12.sp
-            )
+    val recs = result.analysis.recommendations.orEmpty().filter { it.isNotBlank() }
+    val criticalCount = result.analysis.angle_analysis.orEmpty().count { it.is_critical }
+
+    Column(modifier = Modifier.padding(top = 12.dp)) {
+        val (verdictText, verdictColor) = when {
+            recs.isEmpty() && criticalCount == 0 ->
+                "Техника близка к эталонной" to ScoreGreen
+            criticalCount > 0 ->
+                "Есть критичные моменты" to IssueRed
+            else ->
+                "Есть над чем поработать" to TextPrimary
         }
-        if (result.analysis.recommendations.isNotEmpty()) {
+        Text(
+            text = verdictText,
+            color = verdictColor,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(Modifier.height(10.dp))
+
+        if (recs.isEmpty()) {
             Text(
-                text = stringResource(R.string.videos_recommendations),
+                text = "Продолжайте в том же духе.",
+                color = TextSecondary,
+                fontSize = 13.sp,
+            )
+        } else {
+            Text(
+                text = "Рекомендации",
                 color = TextPrimary,
                 fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
             )
-            result.analysis.recommendations.forEach { rec ->
-                Text(text = "• $rec", color = TextSecondary, fontSize = 12.sp)
+            Spacer(Modifier.height(6.dp))
+            recs.forEach { rec ->
+                RecommendationCard(rec)
+                Spacer(Modifier.height(6.dp))
             }
         }
-        result.files.annotated_video?.let {
-            Text(text = stringResource(R.string.videos_annotated, it), color = TextSecondary, fontSize = 12.sp)
-        }
-        result.files.charts?.let {
-            Text(text = stringResource(R.string.videos_charts, it), color = TextSecondary, fontSize = 12.sp)
-        }
+    }
+}
+
+@Composable
+private fun RecommendationCard(text: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(UploadTint)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(top = 4.dp, end = 10.dp)
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(PrimaryBlue),
+        )
+        Text(text = text, color = TextPrimary, fontSize = 13.sp)
     }
 }

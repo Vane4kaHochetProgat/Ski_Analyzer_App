@@ -1,3 +1,25 @@
+/**
+ * Submit tab — entry point for adding a new video to be analyzed.
+ *
+ * Renders:
+ *   * a dashed-border upload card that delegates to `onPickVideo` (system
+ *     `GetContent` picker is launched from [MainActivity]);
+ *   * a "Record with camera" shortcut that triggers `onOpenCamera` (navigates
+ *     to the `camera` route → [MyCameraViewfinder]);
+ *   * a video-title text field;
+ *   * two-option sport selector (skiing / snowboarding, see [SportType]);
+ *   * the gradient "Analyze" button.
+ *
+ * The Analyze button currently flips a local `refreshing` flag for 1.5s and
+ * shows a bottom pill — the real analysis flow happens in [VideoBrowser]
+ * after a video has been picked. Title and sport selection are not yet
+ * propagated upward.
+ *
+ * All private composables ([UploadCard], [SportPill], [AnalyzeButton],
+ * [RefreshingPill]) are presentation-only and consume the shared palette from
+ * [com.example.myapplication.ui.theme.Color].
+ */
+
 package com.example.myapplication
 
 import androidx.compose.foundation.BorderStroke

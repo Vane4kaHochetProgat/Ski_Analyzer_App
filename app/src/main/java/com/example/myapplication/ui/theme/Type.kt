@@ -1,3 +1,13 @@
+/**
+ * Material 3 [Typography] roles for the app.
+ *
+ * Uses [FontFamily.Default] (system font) at the sizes/weights screens rely
+ * on: bold 26.sp `headlineLarge` for page titles, semi-bold `titleLarge` /
+ * `titleMedium` for section headers and card titles, normal `bodyLarge` /
+ * `bodyMedium` / `bodySmall` for content, and semi-bold `labelLarge` for
+ * button text. Plugged into [MyApplicationTheme].
+ */
+
 package com.example.myapplication.ui.theme
 
 import androidx.compose.material3.Typography

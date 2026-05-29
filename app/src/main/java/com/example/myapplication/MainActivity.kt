@@ -1,3 +1,20 @@
+/**
+ * Single Activity that hosts the entire Compose app.
+ *
+ * Responsibilities:
+ *   * Requests CAMERA + RECORD_AUDIO runtime permissions on launch and exposes
+ *     the result through [cameraAllowedFlag] for the camera composable.
+ *   * Owns the four screen-scoped ViewModels (`authViewModel`,
+ *     `mistakesViewModel`, `profileViewModel`, `cameraViewModel`) via the
+ *     `by viewModels()` delegate. No DI framework is used.
+ *   * Switches between [AuthScreen] (when no user is signed in) and the main
+ *     four-tab navigation Scaffold otherwise.
+ *
+ * Navigation uses Jetpack Navigation-Compose with the [Destination] enum as
+ * the source of truth for routes, labels, and icons. The bottom bar's
+ * selected index is preserved across config changes via `rememberSaveable`.
+ */
+
 package com.example.myapplication
 
 import android.content.pm.PackageManager
@@ -67,7 +84,18 @@ class MainActivity : ComponentActivity() {
                 cameraAllowedFlag.value = true
             }
         }
-    val picker = registerForActivityResult(ActivityResultContracts.GetContent()) { _ -> }
+    val picker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        val dest = java.io.File(filesDir, "${System.currentTimeMillis()}.mp4")
+        try {
+            contentResolver.openInputStream(uri)?.use { input ->
+                dest.outputStream().use { output -> input.copyTo(output) }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "failed to import picked video: ${e.message}", e)
+            if (dest.exists()) dest.delete()
+        }
+    }
 
     val cameraAllowedFlag = mutableStateOf(false)
     val cameraViewModel: PreviewViewModel by viewModels()
@@ -77,6 +105,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        installBackendContext(applicationContext)
+        kotlinx.coroutines.runBlocking { UserSession(applicationContext).bootstrap() }
         if (PERMISSIONS.all { p ->
                 ContextCompat.checkSelfPermission(
                     this,
@@ -173,7 +203,11 @@ class MainActivity : ComponentActivity() {
                             }
                             composable("camera") {
                                 if (cameraAllowedFlag.value) {
-                                    MyCameraViewfinder(cameraViewModel, Modifier.fillMaxSize())
+                                    MyCameraViewfinder(
+                                        viewModel = cameraViewModel,
+                                        onClose = { navController.popBackStack() },
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
                                 } else {
                                     Text(text = stringResource(R.string.camera_permission_required))
                                 }
@@ -190,7 +224,17 @@ class MainActivity : ComponentActivity() {
                                 MistakesScreen(mistakesViewModel, Modifier.fillMaxSize())
                             }
                             composable(Destination.PROFILE.route) {
-                                ProfileScreen(profileViewModel, Modifier.fillMaxSize())
+                                ProfileScreen(
+                                    profileViewModel,
+                                    onOpenSettings = { navController.navigate("settings") },
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                            composable("settings") {
+                                SettingsRoute(
+                                    onBack = { navController.popBackStack() },
+                                    modifier = Modifier.fillMaxSize(),
+                                )
                             }
                         }
                     }

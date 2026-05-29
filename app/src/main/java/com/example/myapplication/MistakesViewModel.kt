@@ -1,3 +1,34 @@
+/**
+ * ViewModel for the Mistakes tab — lists a user's recorded mistakes and turns
+ * a freshly-completed [AnalysisResult] into rows on the backend.
+ *
+ * UI state is a sealed [MistakesUiState] (Loading / NotSignedIn / Loaded /
+ * Error) exposed as a `StateFlow`. The screen calls [refresh] on first
+ * composition, and [recordAnalysis] is invoked by [VideoBrowser] right after
+ * a successful upload to the analysis service.
+ *
+ * [recordAnalysis] persists three things in order:
+ *   1. `POST /videos`          — registers the source file.
+ *   2. `POST /analyses`        — saves the score, recommendations, and the
+ *                                per-joint `angle_analyses` rows.
+ *   3. `POST /user_mistakes`   — one row per mistake derived from the
+ *                                analyzed angles (see [mistakesFrom]).
+ * After the writes, [refresh] reloads the list. 409 conflicts from
+ * `createUserMistake` are intentionally swallowed (already recorded).
+ *
+ * [mistakesFrom] is the heuristic that maps generic angle names to the
+ * stable mistake codes seeded in `seed.sql`:
+ *   * hip*                          → "hip_rotation_issues"
+ *   * knee*                         → "stiff_knees"
+ *   * back* / spine* / torso*       → "leaning_back"
+ *   * shoulder* / arm* / elbow*     → "arms_too_wide"
+ *   * head* / neck* / gaze*         → "looking_down"
+ * Severity is derived from `is_critical` and `percent_bad` thresholds
+ * (≥70 → high, ≥50 → medium, ≥40 → low; below 40 is skipped unless critical).
+ * Each code appears at most once per analysis. [mistakesFromForTest] exposes
+ * the otherwise-private function for unit tests.
+ */
+
 package com.example.myapplication
 
 import android.app.Application
@@ -41,7 +72,7 @@ class MistakesViewModel @JvmOverloads constructor(
             }
             _state.value = try {
                 val rows = withContext(ioDispatcher) {
-                    api.listUserMistakes(user.userId)
+                    api.listMyMistakes()
                 }
                 MistakesUiState.Loaded(rows)
             } catch (e: Exception) {
@@ -57,7 +88,6 @@ class MistakesViewModel @JvmOverloads constructor(
                 withContext(ioDispatcher) {
                     val video = api.createVideo(
                         VideoCreateRequest(
-                            user_id = user.userId,
                             title = file.nameWithoutExtension,
                             sport_code = sportCode,
                             file_path = file.absolutePath,
@@ -86,7 +116,6 @@ class MistakesViewModel @JvmOverloads constructor(
                         try {
                             api.createUserMistake(
                                 UserMistakeCreateRequest(
-                                    user_id = user.userId,
                                     analysis_id = analysis.analysis_id,
                                     mistake_code = code,
                                     severity_code = severity

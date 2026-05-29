@@ -1,5 +1,25 @@
+/**
+ * Retrofit interface for the FastAPI backend (`server/app/main.py`).
+ *
+ * Wraps the CRUD-over-Postgres service the app talks to:
+ *   * `register` / `login`                    — user accounts.
+ *   * `listVideos` / `createVideo` / `deleteVideo` — video registry.
+ *   * `createAnalysis`                        — persists scores, angles, tips.
+ *   * `createUserMistake` / `listUserMistakes`— per-user mistake history.
+ *
+ * Request and response DTOs declared in this file mirror the server's Pydantic
+ * models 1:1 — snake_case names matter, they're the wire format consumed by
+ * Gson on the client and FastAPI on the server.
+ *
+ * The Retrofit client is built once as a module-level singleton [backendApi]
+ * with [BACKEND_BASE_URL] from [PrivateConsts]; there is no DI container.
+ * `AuthViewModel`, `MistakesViewModel`, and `ProfileViewModel` default to this
+ * singleton but accept overrides via @JvmOverloads for unit tests.
+ */
+
 package com.example.myapplication
 
+import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
@@ -7,7 +27,6 @@ import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
-import retrofit2.http.Query
 
 data class RegisterRequest(
     val username: String,
@@ -38,8 +57,13 @@ data class VideoDto(
     val uploaded_at: String
 )
 
+data class AuthResponseDto(
+    val user: UserDto,
+    val access_token: String,
+    val token_type: String = "bearer",
+)
+
 data class VideoCreateRequest(
-    val user_id: Int,
     val title: String,
     val sport_code: String,
     val file_path: String,
@@ -73,7 +97,6 @@ data class AnalysisDto(
 )
 
 data class UserMistakeCreateRequest(
-    val user_id: Int,
     val analysis_id: Int,
     val mistake_code: String,
     val severity_code: String? = null,
@@ -96,19 +119,16 @@ data class UserMistakeDetailDto(
 
 interface BackendAPI {
     @POST("users")
-    suspend fun register(@Body body: RegisterRequest): UserDto
+    suspend fun register(@Body body: RegisterRequest): AuthResponseDto
 
     @POST("login")
-    suspend fun login(@Body body: LoginRequest): UserDto
+    suspend fun login(@Body body: LoginRequest): AuthResponseDto
 
-    @GET("users/{userId}/videos")
-    suspend fun listVideos(@Path("userId") userId: Int): List<VideoDto>
+    @GET("me/videos")
+    suspend fun listMyVideos(): List<VideoDto>
 
     @DELETE("videos/{videoId}")
-    suspend fun deleteVideo(
-        @Path("videoId") videoId: Int,
-        @Query("user_id") userId: Int
-    )
+    suspend fun deleteVideo(@Path("videoId") videoId: Int)
 
     @POST("videos")
     suspend fun createVideo(@Body body: VideoCreateRequest): VideoDto
@@ -119,12 +139,29 @@ interface BackendAPI {
     @POST("user_mistakes")
     suspend fun createUserMistake(@Body body: UserMistakeCreateRequest)
 
-    @GET("users/{userId}/mistakes")
-    suspend fun listUserMistakes(@Path("userId") userId: Int): List<UserMistakeDetailDto>
+    @GET("me/mistakes")
+    suspend fun listMyMistakes(): List<UserMistakeDetailDto>
 }
 
-val backendApi: BackendAPI = Retrofit.Builder()
-    .baseUrl(BACKEND_BASE_URL)
-    .addConverterFactory(GsonConverterFactory.create())
-    .build()
-    .create(BackendAPI::class.java)
+private val backendHttpClient: OkHttpClient by lazy {
+    val builder = OkHttpClient.Builder().addInterceptor(AuthInterceptor())
+    backendAppContext?.let { ctx ->
+        builder.authenticator(UnauthorizedAuthenticator(ctx))
+    }
+    builder.build()
+}
+
+@Volatile private var backendAppContext: android.content.Context? = null
+
+fun installBackendContext(ctx: android.content.Context) {
+    backendAppContext = ctx.applicationContext
+}
+
+val backendApi: BackendAPI by lazy {
+    Retrofit.Builder()
+        .baseUrl(BACKEND_BASE_URL)
+        .client(backendHttpClient)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+        .create(BackendAPI::class.java)
+}

@@ -1,3 +1,30 @@
+/**
+ * JVM unit tests for [MistakesViewModel].
+ *
+ * Test plumbing mirrors [AuthViewModelTest]: a `StandardTestDispatcher` is
+ * installed as `Dispatchers.Main` and injected as the ViewModel's IO
+ * dispatcher; [BackendAPI] is mocked with MockK, [UserSession.current]
+ * emits a single fixed [StoredUser] (`user_id = 7`) so the "signed-in"
+ * branch is exercised by default.
+ *
+ * Covered cases:
+ *   * `refresh()` state transitions — Loaded on success, Error("boom") when
+ *     the API throws, NotSignedIn when `session.current` emits null.
+ *   * `recordAnalysis()` happy path — verifies the exact call sequence with
+ *     `coVerifySequence`: createVideo → createAnalysis → one
+ *     createUserMistake per mapped angle → listUserMistakes (the `refresh`
+ *     call). Also asserts that `mistakesFrom` produced "hip_rotation_issues"
+ *     (high) and "stiff_knees" (medium) from the input angles.
+ *   * `recordAnalysis()` swallows 409 from `createUserMistake` and still
+ *     refreshes.
+ *   * `recordAnalysis()` returns silently (zero API calls) when no user is
+ *     signed in.
+ *   * `mistakesFromForTest` exercises the angle→code/severity heuristic:
+ *     name-substring matching, severity bucketing (critical → high, ≥70 →
+ *     high, ≥50 → medium, ≥40 → low), dedup-by-code, and the cutoff that
+ *     drops angles with `percent_bad < 40 && !is_critical`.
+ */
+
 package com.example.myapplication
 
 import android.app.Application
@@ -54,7 +81,7 @@ class MistakesViewModelTest {
     @Test
     fun `refresh emits Loaded on success`() = runTest(dispatcher) {
         val rows = listOf(sampleMistake(1, "leaning_back"))
-        coEvery { api.listUserMistakes(7) } returns rows
+        coEvery { api.listMyMistakes() } returns rows
 
         val vm = vm()
         vm.refresh()
@@ -67,7 +94,7 @@ class MistakesViewModelTest {
 
     @Test
     fun `refresh emits Error when api throws`() = runTest(dispatcher) {
-        coEvery { api.listUserMistakes(any()) } throws RuntimeException("boom")
+        coEvery { api.listMyMistakes() } throws RuntimeException("boom")
 
         val vm = vm()
         vm.refresh()
@@ -113,7 +140,7 @@ class MistakesViewModelTest {
             charts_path = "ch.png", status = "completed", created_at = "now"
         )
         coEvery { api.createUserMistake(any()) } just Runs
-        coEvery { api.listUserMistakes(7) } returns emptyList()
+        coEvery { api.listMyMistakes() } returns emptyList()
 
         val vm = vm()
         vm.recordAnalysis(File("/tmp/clip.mp4"), "skiing", analysisResult)
@@ -121,12 +148,12 @@ class MistakesViewModelTest {
 
         coVerifySequence {
             session.current
-            api.createVideo(match { it.user_id == 7 && it.title == "clip" && it.sport_code == "skiing" })
+            api.createVideo(match { it.title == "clip" && it.sport_code == "skiing" })
             api.createAnalysis(match { it.video_id == 42 && it.angles.size == 3 })
             api.createUserMistake(match { it.mistake_code == "hip_rotation_issues" && it.severity_code == "high" })
             api.createUserMistake(match { it.mistake_code == "stiff_knees" && it.severity_code == "medium" })
             session.current
-            api.listUserMistakes(7)
+            api.listMyMistakes()
         }
     }
 
@@ -148,13 +175,13 @@ class MistakesViewModelTest {
         coEvery { api.createUserMistake(any()) } throws HttpException(
             Response.error<Unit>(409, "".toResponseBody())
         )
-        coEvery { api.listUserMistakes(7) } returns emptyList()
+        coEvery { api.listMyMistakes() } returns emptyList()
 
         val vm = vm()
         vm.recordAnalysis(File("/tmp/a.mp4"), "skiing", result)
         advanceUntilIdle()
 
-        coVerify { api.listUserMistakes(7) }
+        coVerify { api.listMyMistakes() }
     }
 
     @Test

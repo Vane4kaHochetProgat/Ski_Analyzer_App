@@ -1,3 +1,20 @@
+/**
+ * Profile tab — renders [ProfileUiState] from [ProfileViewModel].
+ *
+ * Split into two Composables:
+ *   * [ProfileScreen]        — wires the ViewModel: triggers `refresh()` on
+ *                              first composition and `collectAsState()` for
+ *                              re-renders.
+ *   * [ProfileScreenContent] — stateless renderer; takes a [ProfileUiState]
+ *                              directly so it can be previewed and unit-tested
+ *                              without a ViewModel.
+ *
+ * Visual: a gradient (PrimaryBlue → AccentCyan) card with an avatar
+ * placeholder, username, email, and a single "videos analyzed" stat. The
+ * stat shows "—" while [ProfileUiState.videosCount] is null (loading or
+ * failed fetch — see [ProfileViewModel.refresh]).
+ */
+
 package com.example.myapplication
 
 import androidx.compose.foundation.background
@@ -16,7 +33,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DownhillSkiing
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,14 +56,22 @@ import com.example.myapplication.ui.theme.PrimaryBlue
 import com.example.myapplication.ui.theme.TextPrimary
 
 @Composable
-fun ProfileScreen(viewModel: ProfileViewModel, modifier: Modifier = Modifier) {
+fun ProfileScreen(
+    viewModel: ProfileViewModel,
+    onOpenSettings: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
     val state by viewModel.state.collectAsState()
     LaunchedEffect(Unit) { viewModel.refresh() }
-    ProfileScreenContent(state, modifier)
+    ProfileScreenContent(state, onOpenSettings, modifier)
 }
 
 @Composable
-fun ProfileScreenContent(state: ProfileUiState, modifier: Modifier = Modifier) {
+fun ProfileScreenContent(
+    state: ProfileUiState,
+    onOpenSettings: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -52,14 +79,103 @@ fun ProfileScreenContent(state: ProfileUiState, modifier: Modifier = Modifier) {
             .padding(horizontal = 20.dp)
             .padding(top = 12.dp, bottom = 24.dp)
     ) {
-        Text(
-            text = stringResource(R.string.profile_title),
-            color = TextPrimary,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.profile_title),
+                color = TextPrimary,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = onOpenSettings) {
+                Icon(
+                    Icons.Filled.Settings,
+                    contentDescription = "Настройки",
+                    tint = TextPrimary,
+                )
+            }
+        }
         Spacer(Modifier.height(14.dp))
         ProfileHeader(state)
+        Spacer(Modifier.height(20.dp))
+        ProgressSection(state)
+    }
+}
+
+@Composable
+private fun ProgressSection(state: ProfileUiState) {
+    Text(
+        text = "Прогресс",
+        color = TextPrimary,
+        fontSize = 18.sp,
+        fontWeight = FontWeight.Bold,
+    )
+    Spacer(Modifier.height(12.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp),
+    ) {
+        StatCard(
+            title = "Видео за неделю",
+            value = state.videosThisWeek?.toString() ?: "—",
+            modifier = Modifier.weight(1f),
+        )
+        StatCard(
+            title = "Ошибок всего",
+            value = state.mistakesCount?.toString() ?: "—",
+            modifier = Modifier.weight(1f),
+        )
+    }
+    if (!state.topMistakeTitle.isNullOrBlank()) {
+        Spacer(Modifier.height(12.dp))
+        TopMistakeCard(state.topMistakeTitle)
+    }
+}
+
+@Composable
+private fun StatCard(title: String, value: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(CardSurface)
+            .padding(14.dp),
+    ) {
+        Text(
+            text = value,
+            color = TextPrimary,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = title,
+            color = com.example.myapplication.ui.theme.TextSecondary,
+            fontSize = 12.sp,
+        )
+    }
+}
+
+@Composable
+private fun TopMistakeCard(title: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(CardSurface)
+            .padding(14.dp),
+    ) {
+        Text(
+            text = "Самая частая ошибка",
+            color = com.example.myapplication.ui.theme.TextSecondary,
+            fontSize = 12.sp,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = title,
+            color = TextPrimary,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
 

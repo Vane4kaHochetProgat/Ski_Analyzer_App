@@ -1,3 +1,25 @@
+/**
+ * Project color palette.
+ *
+ * All on-screen colors are hard-coded here as top-level `val`s and referenced
+ * directly from composables (instead of going through `MaterialTheme.colorScheme`),
+ * because [MainActivity], [VideoBrowser] etc. need finer-grained tokens than
+ * Material 3 roles provide.
+ *
+ * Groups:
+ *   * Surfaces       — [AppBackground], [CardSurface].
+ *   * Brand          — [PrimaryBlue]/[PrimaryBlueDark]/[AccentCyan], plus
+ *                      [UploadTint]/[UploadBorder] for the dashed upload card.
+ *   * Text/lines     — [TextPrimary], [TextSecondary], [TextMuted],
+ *                      [DividerLight].
+ *   * Status         — [ScoreGreen] (good), [IssueRed] (bad/destructive).
+ *   * Severity pills — [SeverityHigh]/[SeverityMed]/[SeverityLow] bg/fg pairs
+ *                      used by [MistakesScreen]'s `SeverityBadge`.
+ *   * Sport tag      — [TagBg], [TagFg].
+ *   * Achievement /
+ *     progress       — currently unused placeholders for future profile work.
+ */
+
 package com.example.myapplication.ui.theme
 
 import androidx.compose.ui.graphics.Color

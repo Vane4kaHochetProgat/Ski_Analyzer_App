@@ -1,3 +1,24 @@
+/**
+ * Instrumented Compose-UI tests for `MistakesScreenContent` from
+ * [MistakesScreen].
+ *
+ * Runs on a device/emulator (`./gradlew connectedAndroidTest`) and uses
+ * [createComposeRule] to mount the stateless content composable directly —
+ * bypassing [MistakesViewModel] so each test owns its [MistakesUiState].
+ *
+ * Three render paths are exercised:
+ *   * `loaded_rendersMistakeCard` — Loaded with one [UserMistakeDetailDto];
+ *     asserts the title, description, severity ("high"), localized sport
+ *     ("Skiing"), and the date portion of `detected_at` are all on-screen.
+ *   * `empty_rendersEmptyState`   — Loaded with `emptyList()`; asserts the
+ *     empty-state hint string is shown.
+ *   * `error_rendersErrorMessage` — Error("network down"); asserts the
+ *     formatted "Couldn't load mistakes: …" message is shown.
+ *
+ * `MyApplicationTheme` is wrapped around the content so theme-resolved colors
+ * and shapes match production rendering.
+ */
+
 package com.example.myapplication
 
 import androidx.compose.ui.test.assertIsDisplayed

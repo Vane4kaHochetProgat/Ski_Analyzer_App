@@ -1,3 +1,29 @@
+/**
+ * JVM unit tests for [AuthViewModel].
+ *
+ * Test plumbing:
+ *   * `Dispatchers.setMain(StandardTestDispatcher())` is installed in [setup]
+ *     so `viewModelScope.launch` runs on a controllable dispatcher; tests
+ *     drive it with `advanceUntilIdle()`.
+ *   * The same `StandardTestDispatcher` is also injected as `ioDispatcher` so
+ *     the `withContext(ioDispatcher)` block inside [AuthViewModel.submit]
+ *     stays on the test scheduler.
+ *   * [BackendAPI] and [UserSession] are mocked with MockK
+ *     (`relaxed = true` on the session so `save`/`clear` are stubbed by
+ *     default; `current` is a `flowOf(null)` so no user is signed in).
+ *
+ * Covered cases:
+ *   * Happy paths for LOGIN and REGISTER — verifies API call, `session.save`,
+ *     error cleared, `isSubmitting` flipped back to false.
+ *   * Error mapping — 401 → InvalidCredentials, 409 → UserExists,
+ *     500 → ServerError(code). (A `NetworkError` case is present but
+ *     currently commented out.)
+ *   * Concurrent `submit` calls are deduplicated — only one API hit fires
+ *     while one is in flight.
+ *   * `clearError()` resets `errorMessage` to null; `signOut()` calls
+ *     `session.clear()`.
+ */
+
 package com.example.myapplication
 
 import android.app.Application
@@ -42,6 +68,7 @@ class AuthViewModelTest {
         created_at = "now",
         is_active = true
     )
+    private val authDto = AuthResponseDto(user = userDto, access_token = "jwt-abc")
 
     @Before
     fun setup() {
@@ -49,7 +76,7 @@ class AuthViewModelTest {
         api = mockk()
         session = mockk(relaxed = true)
         every { session.current } returns flowOf(null)
-        coEvery { session.save(any()) } just Runs
+        coEvery { session.save(any(), any()) } just Runs
         coEvery { session.clear() } just Runs
     }
 
@@ -60,14 +87,14 @@ class AuthViewModelTest {
 
     @Test
     fun `submit LOGIN success saves session and clears error`() = runTest(dispatcher) {
-        coEvery { api.login(LoginRequest("ann@x", "secret")) } returns userDto
+        coEvery { api.login(LoginRequest("ann@x", "secret")) } returns authDto
 
         val vm = vm()
         vm.submit(AuthMode.LOGIN, username = "", email = " ann@x ", password = "secret")
         advanceUntilIdle()
 
         coVerify { api.login(LoginRequest("ann@x", "secret")) }
-        coVerify { session.save(userDto) }
+        coVerify { session.save(userDto, "jwt-abc") }
         assertNull(vm.errorMessage.value)
         assertEquals(false, vm.isSubmitting.value)
     }
@@ -76,20 +103,20 @@ class AuthViewModelTest {
     fun `submit REGISTER success calls register endpoint`() = runTest(dispatcher) {
         coEvery {
             api.register(RegisterRequest("ann", "ann@x", "secret"))
-        } returns userDto
+        } returns authDto
 
         val vm = vm()
         vm.submit(AuthMode.REGISTER, username = "ann", email = "ann@x", password = "secret")
         advanceUntilIdle()
 
         coVerify { api.register(RegisterRequest("ann", "ann@x", "secret")) }
-        coVerify { session.save(userDto) }
+        coVerify { session.save(userDto, "jwt-abc") }
     }
 
     @Test
     fun `submit emits InvalidCredentials on 401`() = runTest(dispatcher) {
         coEvery { api.login(any()) } throws HttpException(
-            Response.error<UserDto>(401, "".toResponseBody())
+            Response.error<AuthResponseDto>(401, "".toResponseBody())
         )
 
         val vm = vm()
@@ -97,13 +124,13 @@ class AuthViewModelTest {
         advanceUntilIdle()
 
         assertEquals(AuthError.InvalidCredentials, vm.errorMessage.value)
-        coVerify(exactly = 0) { session.save(any()) }
+        coVerify(exactly = 0) { session.save(any(), any()) }
     }
 
     @Test
     fun `submit emits UserExists on 409`() = runTest(dispatcher) {
         coEvery { api.register(any()) } throws HttpException(
-            Response.error<UserDto>(409, "".toResponseBody())
+            Response.error<AuthResponseDto>(409, "".toResponseBody())
         )
 
         val vm = vm()
@@ -116,7 +143,7 @@ class AuthViewModelTest {
     @Test
     fun `submit emits ServerError with code on 500`() = runTest(dispatcher) {
         coEvery { api.login(any()) } throws HttpException(
-            Response.error<UserDto>(500, "".toResponseBody())
+            Response.error<AuthResponseDto>(500, "".toResponseBody())
         )
 
         val vm = vm()
@@ -143,7 +170,7 @@ class AuthViewModelTest {
     fun `concurrent submits are ignored while one is in flight`() = runTest(dispatcher) {
         coEvery { api.login(any()) } coAnswers {
             kotlinx.coroutines.delay(50)
-            userDto
+            authDto
         }
 
         val vm = vm()
@@ -157,7 +184,7 @@ class AuthViewModelTest {
     @Test
     fun `clearError sets errorMessage to null`() = runTest(dispatcher) {
         coEvery { api.login(any()) } throws HttpException(
-            Response.error<UserDto>(401, "".toResponseBody())
+            Response.error<AuthResponseDto>(401, "".toResponseBody())
         )
         val vm = vm()
         vm.submit(AuthMode.LOGIN, "", "x@x", "y")

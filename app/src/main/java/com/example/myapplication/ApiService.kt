@@ -1,3 +1,21 @@
+/**
+ * Retrofit client for the video-analysis service (separate from the CRUD
+ * [BackendAPI]).
+ *
+ * Endpoint:
+ *   POST /analyze-video    — multipart upload of an `.mp4` returning a parsed
+ *                            [AnalysisResult] (status, score, per-angle
+ *                            metrics, recommendations, output file paths).
+ *
+ * The OkHttp client is configured with generous read/write/call timeouts
+ * (5–10 min) because the server runs pose estimation per frame and can take
+ * minutes on a long clip. [analyzeApi] is a module-level singleton built
+ * against [ANALYZE_BASE_URL] from [PrivateConsts].
+ *
+ * Helper [uploadVideoForAnalysis] wraps a `File` into a `video/mp4` multipart
+ * part keyed `file` — matches the FastAPI handler's expected form field name.
+ */
+
 package com.example.myapplication
 
 import okhttp3.MediaType.Companion.toMediaType

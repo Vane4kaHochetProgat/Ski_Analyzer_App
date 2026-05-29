@@ -1,3 +1,12 @@
+/**
+ * Auto-generated smoke test left in place from the Android Studio template.
+ *
+ * Runs on a device/emulator under [AndroidJUnit4] and only verifies that the
+ * app-under-test context's `packageName` matches `com.example.myapplication`.
+ * Kept as a minimal sanity check that the instrumented test harness wires
+ * up correctly; real UI assertions live in [MistakesScreenTest].
+ */
+
 package com.example.myapplication
 
 import androidx.test.platform.app.InstrumentationRegistry
