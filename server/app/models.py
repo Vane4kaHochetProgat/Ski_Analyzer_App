@@ -21,6 +21,12 @@ class UserOut(BaseModel):
     is_active: bool
 
 
+class AuthResponse(BaseModel):
+    user: UserOut
+    access_token: str
+    token_type: str = "bearer"
+
+
 class MistakeOut(BaseModel):
     mistake_type_id: int
     code: str
@@ -34,7 +40,6 @@ class MistakeOut(BaseModel):
 
 
 class VideoCreate(BaseModel):
-    user_id: int
     title: str
     sport_code: str
     file_path: str
@@ -77,7 +82,6 @@ class AnalysisOut(BaseModel):
     created_at: datetime
 
 class UserMistakeCreate(BaseModel):
-    user_id: int
     analysis_id: int
     mistake_code: str
     severity_code: Optional[str] = None
@@ -95,8 +99,6 @@ class UserMistakeOut(BaseModel):
 
 
 class UserMistakeDetail(BaseModel):
-    """user_mistake row joined with mistake_types/severities/sports for the
-    MistakesScreen — carries everything the UI needs to render a card."""
     user_mistake_id: int
     analysis_id: int
     mistake_code: str

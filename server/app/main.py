@@ -1,13 +1,14 @@
 import os
 from typing import List
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import Depends, FastAPI, HTTPException, Response
 import bcrypt
 import psycopg
 
+from .auth import create_access_token, get_current_user
 from .db import get_conn
 from .models import (
-    UserRegister, UserLogin, UserOut,
+    UserRegister, UserLogin, UserOut, AuthResponse,
     MistakeOut,
     VideoCreate, VideoOut,
     AnalysisCreate, AnalysisOut,
@@ -15,7 +16,16 @@ from .models import (
 )
 
 load_dotenv()
-app = FastAPI(title="Technique analysis API", version="0.1.0")
+app = FastAPI(title="Technique analysis API", version="0.2.0")
+
+
+def _auth_response(user_row: dict) -> dict:
+    user_row.pop("password_hash", None)
+    return {
+        "user": user_row,
+        "access_token": create_access_token(user_row["user_id"]),
+        "token_type": "bearer",
+    }
 
 
 @app.get("/health")
@@ -25,7 +35,7 @@ def health():
     return {"status": "ok", "db": row["ok"] == 1}
 
 
-@app.post("/users", response_model=UserOut, status_code=201)
+@app.post("/users", response_model=AuthResponse, status_code=201)
 def register(user: UserRegister):
     pw_hash = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt()).decode()
     with get_conn() as conn:
@@ -40,10 +50,10 @@ def register(user: UserRegister):
             ).fetchone()
         except psycopg.errors.UniqueViolation:
             raise HTTPException(409, "username or email already taken")
-    return row
+    return _auth_response(row)
 
 
-@app.post("/login", response_model=UserOut)
+@app.post("/login", response_model=AuthResponse)
 def login(creds: UserLogin):
     with get_conn() as conn:
         row = conn.execute(
@@ -58,9 +68,12 @@ def login(creds: UserLogin):
         raise HTTPException(401, "invalid email or password")
     if not bcrypt.checkpw(creds.password.encode(), row["password_hash"].encode()):
         raise HTTPException(401, "invalid email or password")
-    # strip password_hash before returning
-    row.pop("password_hash", None)
-    return row
+    return _auth_response(row)
+
+
+@app.get("/me", response_model=UserOut)
+def me(user: dict = Depends(get_current_user)):
+    return user
 
 
 @app.get("/mistakes", response_model=List[MistakeOut])
@@ -92,29 +105,26 @@ def list_mistakes():
 
 
 @app.post("/videos", response_model=VideoOut, status_code=201)
-def create_video(v: VideoCreate):
+def create_video(v: VideoCreate, user: dict = Depends(get_current_user)):
     with get_conn() as conn:
         sport = conn.execute(
             "SELECT sport_id FROM sports WHERE code = %s", (v.sport_code,)
         ).fetchone()
         if not sport:
             raise HTTPException(400, f"unknown sport_code: {v.sport_code}")
-        try:
-            row = conn.execute(
-                """
-                INSERT INTO videos (user_id, title, sport_id, file_path, annotated_path)
-                VALUES (%s, %s, %s, %s, %s)
-                RETURNING video_id, user_id, title, sport_id, file_path, annotated_path, uploaded_at
-                """,
-                (v.user_id, v.title, sport["sport_id"], v.file_path, v.annotated_path),
-            ).fetchone()
-        except psycopg.errors.ForeignKeyViolation:
-            raise HTTPException(400, "user_id does not exist")
+        row = conn.execute(
+            """
+            INSERT INTO videos (user_id, title, sport_id, file_path, annotated_path)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING video_id, user_id, title, sport_id, file_path, annotated_path, uploaded_at
+            """,
+            (user["user_id"], v.title, sport["sport_id"], v.file_path, v.annotated_path),
+        ).fetchone()
     return row
 
 
-@app.get("/users/{user_id}/videos", response_model=List[VideoOut])
-def list_user_videos(user_id: int):
+@app.get("/me/videos", response_model=List[VideoOut])
+def list_my_videos(user: dict = Depends(get_current_user)):
     with get_conn() as conn:
         rows = conn.execute(
             """
@@ -123,13 +133,13 @@ def list_user_videos(user_id: int):
              WHERE user_id = %s
              ORDER BY uploaded_at DESC
             """,
-            (user_id,),
+            (user["user_id"],),
         ).fetchall()
     return rows
 
 
 @app.delete("/videos/{video_id}", status_code=204)
-def delete_video(video_id: int, user_id: int):
+def delete_video(video_id: int, user: dict = Depends(get_current_user)):
     with get_conn() as conn:
         row = conn.execute(
             "SELECT user_id FROM videos WHERE video_id = %s",
@@ -137,15 +147,23 @@ def delete_video(video_id: int, user_id: int):
         ).fetchone()
         if not row:
             raise HTTPException(404, "video not found")
-        if row["user_id"] != user_id:
+        if row["user_id"] != user["user_id"]:
             raise HTTPException(403, "this video belongs to another user")
         conn.execute("DELETE FROM videos WHERE video_id = %s", (video_id,))
     return Response(status_code=204)
 
 
 @app.post("/analyses", response_model=AnalysisOut, status_code=201)
-def create_analysis(a: AnalysisCreate):
+def create_analysis(a: AnalysisCreate, user: dict = Depends(get_current_user)):
     with get_conn() as conn:
+        owner = conn.execute(
+            "SELECT user_id FROM videos WHERE video_id = %s", (a.video_id,)
+        ).fetchone()
+        if not owner:
+            raise HTTPException(400, "video_id does not exist")
+        if owner["user_id"] != user["user_id"]:
+            raise HTTPException(403, "this video belongs to another user")
+
         with conn.transaction():
             try:
                 analysis = conn.execute(
@@ -158,8 +176,6 @@ def create_analysis(a: AnalysisCreate):
                 ).fetchone()
             except psycopg.errors.UniqueViolation:
                 raise HTTPException(409, "analysis already exists for this video")
-            except psycopg.errors.ForeignKeyViolation:
-                raise HTTPException(400, "video_id does not exist")
 
             for ang in a.angles:
                 conn.execute(
@@ -183,7 +199,7 @@ def create_analysis(a: AnalysisCreate):
 
 
 @app.post("/user_mistakes", response_model=UserMistakeOut, status_code=201)
-def record_user_mistake(m: UserMistakeCreate):
+def record_user_mistake(m: UserMistakeCreate, user: dict = Depends(get_current_user)):
     with get_conn() as conn:
         mt = conn.execute(
             "SELECT mistake_type_id, default_severity_id FROM mistake_types WHERE code = %s",
@@ -202,6 +218,19 @@ def record_user_mistake(m: UserMistakeCreate):
                 raise HTTPException(400, f"unknown severity_code: {m.severity_code}")
             severity_id = sev["severity_id"]
 
+        owner = conn.execute(
+            """
+            SELECT v.user_id
+              FROM analyses a JOIN videos v ON v.video_id = a.video_id
+             WHERE a.analysis_id = %s
+            """,
+            (m.analysis_id,),
+        ).fetchone()
+        if not owner:
+            raise HTTPException(400, "analysis_id does not exist")
+        if owner["user_id"] != user["user_id"]:
+            raise HTTPException(403, "this analysis belongs to another user")
+
         try:
             row = conn.execute(
                 """
@@ -211,17 +240,15 @@ def record_user_mistake(m: UserMistakeCreate):
                 RETURNING user_mistake_id, user_id, analysis_id,
                           mistake_type_id, severity_id, detected_at, notes
                 """,
-                (m.user_id, m.analysis_id, mt["mistake_type_id"], severity_id, m.notes),
+                (user["user_id"], m.analysis_id, mt["mistake_type_id"], severity_id, m.notes),
             ).fetchone()
         except psycopg.errors.UniqueViolation:
             raise HTTPException(409, "this mistake is already recorded for this analysis")
-        except psycopg.errors.ForeignKeyViolation as e:
-            raise HTTPException(400, f"foreign key violation: {e}")
     return row
 
 
-@app.get("/users/{user_id}/mistakes", response_model=List[UserMistakeDetail])
-def user_mistakes(user_id: int):
+@app.get("/me/mistakes", response_model=List[UserMistakeDetail])
+def my_mistakes(user: dict = Depends(get_current_user)):
     with get_conn() as conn:
         rows = conn.execute(
             """
@@ -243,6 +270,6 @@ def user_mistakes(user_id: int):
              WHERE um.user_id = %s
              ORDER BY um.detected_at DESC
             """,
-            (user_id,),
+            (user["user_id"],),
         ).fetchall()
     return rows
