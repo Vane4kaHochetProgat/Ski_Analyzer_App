@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace 'com.example.myapplication'
+    namespace 'com.vane4ka.skianalyzer'
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.example.myapplication"
+        applicationId "com.vane4ka.skianalyzer"
         minSdk 27
         targetSdk 36
         versionCode 1
