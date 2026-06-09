@@ -98,6 +98,26 @@ private fun sportLabel(code: String): String = when (code.lowercase()) {
     else           -> code.replaceFirstChar { it.uppercase() }
 }
 
+@Composable
+private fun mistakeTitle(code: String, fallback: String): String = when (code) {
+    "leaning_back"        -> stringResource(R.string.mistake_title_leaning_back)
+    "arms_too_wide"       -> stringResource(R.string.mistake_title_arms_too_wide)
+    "looking_down"        -> stringResource(R.string.mistake_title_looking_down)
+    "stiff_knees"         -> stringResource(R.string.mistake_title_stiff_knees)
+    "hip_rotation_issues" -> stringResource(R.string.mistake_title_hip_rotation_issues)
+    else                  -> fallback
+}
+
+@Composable
+private fun mistakeDescription(code: String, fallback: String): String = when (code) {
+    "leaning_back"        -> stringResource(R.string.mistake_desc_leaning_back)
+    "arms_too_wide"       -> stringResource(R.string.mistake_desc_arms_too_wide)
+    "looking_down"        -> stringResource(R.string.mistake_desc_looking_down)
+    "stiff_knees"         -> stringResource(R.string.mistake_desc_stiff_knees)
+    "hip_rotation_issues" -> stringResource(R.string.mistake_desc_hip_rotation_issues)
+    else                  -> fallback
+}
+
 private fun iconFor(code: String?): ImageVector = when (code) {
     "warning"        -> Icons.Filled.Warning
     "swap_horiz"     -> Icons.Filled.SwapHoriz
@@ -250,7 +270,7 @@ private fun AggregatedMistakeCard(m: AggregatedMistake) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = m.sample.title,
+                    text = mistakeTitle(m.code, m.sample.title),
                     color = TextPrimary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -262,7 +282,7 @@ private fun AggregatedMistakeCard(m: AggregatedMistake) {
             }
             Spacer(Modifier.size(4.dp))
             Text(
-                text = m.sample.description,
+                text = mistakeDescription(m.code, m.sample.description),
                 color = TextSecondary,
                 fontSize = 13.sp
             )

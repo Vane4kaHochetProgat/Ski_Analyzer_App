@@ -43,6 +43,20 @@
     <string name="sport_snowboarding">Сноуборд</string>
     <string name="sport_both">Оба</string>
 
+    <!-- Заголовки ошибок (ключи соответствуют server mistake_code) -->
+    <string name="mistake_title_leaning_back">Откидывание назад</string>
+    <string name="mistake_title_arms_too_wide">Слишком широкие руки</string>
+    <string name="mistake_title_looking_down">Взгляд вниз</string>
+    <string name="mistake_title_stiff_knees">Жёсткие колени</string>
+    <string name="mistake_title_hip_rotation_issues">Проблемы с разворотом бёдер</string>
+
+    <!-- Описания ошибок -->
+    <string name="mistake_desc_leaning_back">Вес смещён слишком назад, теряется контроль</string>
+    <string name="mistake_desc_arms_too_wide">Плохой баланс, снижается эффективность поворота</string>
+    <string name="mistake_desc_looking_down">Взгляд направлен на лыжи, а не вперёд</string>
+    <string name="mistake_desc_stiff_knees">Колени не амортизируют рельеф</string>
+    <string name="mistake_desc_hip_rotation_issues">Бёдра не выравниваются во время поворотов</string>
+
     <!-- Profile -->
     <string name="profile_title">Профиль</string>
     <string name="profile_stat_videos">Видео</string>

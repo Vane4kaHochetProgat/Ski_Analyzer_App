@@ -43,6 +43,20 @@
     <string name="sport_snowboarding">Snowboarding</string>
     <string name="sport_both">Both</string>
 
+    <!-- Mistake titles (keys match server mistake_code) -->
+    <string name="mistake_title_leaning_back">Leaning Back</string>
+    <string name="mistake_title_arms_too_wide">Arms Too Wide</string>
+    <string name="mistake_title_looking_down">Looking Down</string>
+    <string name="mistake_title_stiff_knees">Stiff Knees</string>
+    <string name="mistake_title_hip_rotation_issues">Hip Rotation Issues</string>
+
+    <!-- Mistake descriptions -->
+    <string name="mistake_desc_leaning_back">Weight distribution too far back, reducing control</string>
+    <string name="mistake_desc_arms_too_wide">Poor balance and reduced turning efficiency</string>
+    <string name="mistake_desc_looking_down">Eyes focused on skis instead of ahead</string>
+    <string name="mistake_desc_stiff_knees">Not absorbing terrain properly</string>
+    <string name="mistake_desc_hip_rotation_issues">Hips not aligning properly during turns</string>
+
     <!-- Profile -->
     <string name="profile_title">Profile</string>
     <string name="profile_stat_videos">Videos</string>
