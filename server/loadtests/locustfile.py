@@ -3,7 +3,7 @@ import uuid
 
 from locust import HttpUser, between, task
 
-SPORTS = ["skiing", "snowboarding"]
+SPORTS = ["skiing"]
 MISTAKE_CODES = [
     "leaning_back",
     "arms_too_wide",
