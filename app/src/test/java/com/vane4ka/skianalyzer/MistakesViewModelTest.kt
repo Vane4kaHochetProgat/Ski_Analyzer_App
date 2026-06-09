@@ -198,12 +198,12 @@ class MistakesViewModelTest {
     @Test
     fun `mistakesFrom maps angle names and severities correctly`() {
         val angles = listOf(
-            AngleAnalysis("Right Hip Angle", 80.0, 8.0, 20.0, is_critical = true),   // high (critical)
-            AngleAnalysis("Knee Flexion",     55.0, 5.0, 12.0, is_critical = false), // medium
-            AngleAnalysis("Spine Tilt",       45.0, 4.5, 10.0, is_critical = false), // low (>=40, <50)
-            AngleAnalysis("Head Yaw",         72.0, 7.2, 16.0, is_critical = false), // high (>=70)
-            AngleAnalysis("Ankle Pronation",  85.0, 8.5, 18.0, is_critical = true),  // unmapped → skipped
-            AngleAnalysis("Hip Adduction",    99.0, 9.9, 25.0, is_critical = true)   // dedup with first
+            AngleAnalysis("Right Hip Angle", 80.0, 8.0, 20.0, is_critical = true),
+            AngleAnalysis("Knee Flexion",     55.0, 5.0, 12.0, is_critical = false),
+            AngleAnalysis("Spine Tilt",       45.0, 4.5, 10.0, is_critical = false),
+            AngleAnalysis("Head Yaw",         72.0, 7.2, 16.0, is_critical = false),
+            AngleAnalysis("Ankle Pronation",  85.0, 8.5, 18.0, is_critical = true),
+            AngleAnalysis("Hip Adduction",    99.0, 9.9, 25.0, is_critical = true)
         )
         val mapped = mistakesFromForTest(angles).toMap()
         assertEquals("high", mapped["hip_rotation_issues"])

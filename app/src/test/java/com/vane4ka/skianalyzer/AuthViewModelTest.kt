@@ -152,19 +152,6 @@ class AuthViewModelTest {
         assertEquals(AuthError.ServerError(500), vm.errorMessage.value)
     }
 
-//    @Test
-//    fun `submit emits NetworkError on generic exception`() = runTest(dispatcher) {
-//        coEvery { api.login(any()) } throws java.net.SocketTimeoutException("read timeout")
-//
-//        val vm = vm()
-//        vm.submit(AuthMode.LOGIN, "", "x@x", "y")
-//        advanceUntilIdle()
-//
-//        val err = vm.errorMessage.value
-//        assertTrue(err is AuthError.NetworkError)
-//        assertTrue((err as AuthError.NetworkError).detail.contains("read timeout"))
-//    }
-
     @Test
     fun `concurrent submits are ignored while one is in flight`() = runTest(dispatcher) {
         coEvery { api.login(any()) } coAnswers {

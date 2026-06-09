@@ -79,7 +79,6 @@ class UserSession(private val context: Context) {
     }
 
     suspend fun clear() {
-        // намеренно НЕ трогаем offline_mode — это устройство-специфичная настройка
         context.userSessionStore.edit { prefs ->
             prefs.remove(KEY_USER_ID)
             prefs.remove(KEY_USERNAME)

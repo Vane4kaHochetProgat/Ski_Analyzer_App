@@ -123,7 +123,7 @@ fun evaluatePose(pose: Pose, rules: List<JointRule> = DEFAULT_RULES): List<Joint
 fun PoseOverlay(
     frame: PoseFrame?,
     modifier: Modifier = Modifier,
-    mirrored: Boolean = false, // true для фронтальной камеры
+    mirrored: Boolean = false,
 ) {
     if (frame == null || frame.imageWidth == 0 || frame.imageHeight == 0) return
     val pose = frame.pose
